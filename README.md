@@ -12,3 +12,6 @@ End Feb 2021: Topic allocation
 
 ## Log
 12-02-2021: Pre-selection of topics and making appointments with possible supervisors.
+16-02-2021: Calls with Byrony Moody, Georgios Chrysantou, Nic Freeman, Jeremy Oakley (E-Mail)
+17-02-2021: Call with Jonathan Jordan.
+17-02-2021: Send preference list.
