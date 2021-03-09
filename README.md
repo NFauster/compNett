@@ -15,4 +15,5 @@ End Feb 2021: Topic allocation
 16-02-2021: Calls with Byrony Moody, Georgios Chrysantou, Nic Freeman, Jeremy Oakley (E-Mail)
 17-02-2021: Call with Jonathan Jordan.
 17-02-2021: Send preference list.
-02-03-2021: Topic allocated: Comparison of Large Networks (Supervisor: Nic Freeman)
+02-03-2021: Topic allocated: Comparison of Large Networks (Supervisor: Dr Nic Freeman)
+12-03-2021: First meeting Nic
