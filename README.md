@@ -17,3 +17,7 @@ End Feb 2021: Topic allocation
 17-02-2021: Send preference list.
 02-03-2021: Topic allocated: Comparison of Large Networks (Supervisor: Dr Nic Freeman)
 12-03-2021: First meeting Nic
+
+
+## Ethics
+Put form in appendix of disseration.
