@@ -8,6 +8,20 @@ This is the dissertation project of Norman FRM Fauster for the MSc Statistics pr
 
 End Feb 2021: Topic allocation
 
+Mid July: Decision on and formulation of the precise dissertation scope/intent.
+
+Beginning of September: Generating test networks. Decision on comparison methods; more detailled work plan depending on methods
+
+Beginning of October: First (theoretical) part of written dissertation. Algorithm for graphlet counts.
+
+End of the Year: At least one method fully implemented (without code optimisations).
+
+Before 2nd semester 2021/2022: Optimisations on the code.
+
+By end of 2nd semester 2021/2022: The implementation part of the project should be done. Everything except the testing results and discussion of the dissertation are written.
+
+Summer 2022 (starting June): Testing of code on of full-sized networks with different configurations.
+
 
 
 ## Log
@@ -17,6 +31,7 @@ End Feb 2021: Topic allocation
 17-02-2021: Send preference list.
 02-03-2021: Topic allocated: Comparison of Large Networks (Supervisor: Dr Nic Freeman)
 12-03-2021: First meeting Nic
+09-07-2021: Second meeting Nic
 
 
 ## Ethics
