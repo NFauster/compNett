@@ -60,7 +60,7 @@ degree <- function(edge_list, directed = FALSE){
 
 
 # Parameters ----
-number_nodes <- 1e3
+number_nodes <- 3e3
 nodes_init_graph <- 1      ## Size of initial (seed) graph
 init_graph <- matrix(ncol = 2)     ## Or specify inital graph (edge list)
 
@@ -83,11 +83,15 @@ n <- edge_list[,-3] %>%
   na.omit() %>%
   length()    # number of nodes in the current (inital) graph
 
+# TODO: timer
+tictoc::tic.clearlog()
+
 
 ## Iteration ====
 while(n < number_nodes){
-  
+  tictoc::tic()
   degrees <- degree(edge_list[,-3, drop = FALSE])
+  tictoc::toc(log = T, quiet = T)
   
   P <- sample(1:n, 
               R_nodes[n], 
@@ -109,6 +113,11 @@ while(n < number_nodes){
 }
 
 
+t <- tictoc::tic.log(format = T) %>%
+  sapply(function(x) stringr::str_extract(x, "[0123456789.]*")) %>%
+  as.numeric() 
+
+plot(t)
 
 
 
