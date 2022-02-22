@@ -26,6 +26,8 @@ degree <- function(edge_list, directed = FALSE){
   # If directed is TRUE, the result is a named list with two named vectors, one
   # for the in-degrees, one for the out-degrees.
   
+  require(magrittr)
+  
   # Directed network
   if(directed){
     ## Out degrees
@@ -58,6 +60,50 @@ degree <- function(edge_list, directed = FALSE){
   }
 }
 
+recode_edge_list <- function(edge_list){
+  # This function takes an edge_list of a network and renames the nodes
+  # using all numbers from 1 to the number of nodes in the network. Thus,
+  # node names have the same format (all numeric) and the highest node name
+  # is equivalent to the node count.
+  # One advantage is that when adding nodes to the network, there is no 
+  # danger of using an already existing node name. Simply count upwards from
+  # the highest node name.
+  #
+  # Arguments
+  # edge_list         a two-column matrix with one row for each edge in the
+  #                   network. The two columns indicate start- and end-node
+  #                   of the edge.
+  #
+  # Value
+  # A two-column matrix representing the recoded edge list.
+  
+  require(magrittr)
+  require(dplyr)
+  
+  # Existing node names
+  old_nodes <- edge_list %>%
+    as.vector() %>%
+    unique()
+  
+  # Defining assignment old to new names with "codebook"
+  matching_nodes <- data.frame("old" = old_nodes,
+                               "new" = 1:length(old_nodes))
+  
+  # Renaming the nodes
+  edge_list_rec <- edge_list %>%
+    data.frame() %>%
+    left_join(matching_nodes,
+              by = c("X1" = "old")) %>%
+    left_join(matching_nodes,
+              by = c("X2" = "old")) %>%
+    select(new.x, new.y) %>%
+    as.matrix
+  
+  return(edge_list_rec)
+}
+
+
+
 
 # Parameters ----
 number_nodes <- 3e3
@@ -83,15 +129,11 @@ n <- edge_list[,-3] %>%
   na.omit() %>%
   length()    # number of nodes in the current (inital) graph
 
-# TODO: timer
-tictoc::tic.clearlog()
 
 
 ## Iteration ====
 while(n < number_nodes){
-  tictoc::tic()
   degrees <- degree(edge_list[,-3, drop = FALSE])
-  tictoc::toc(log = T, quiet = T)
   
   P <- sample(1:n, 
               R_nodes[n], 
@@ -111,13 +153,6 @@ while(n < number_nodes){
   
   
 }
-
-
-t <- tictoc::tic.log(format = T) %>%
-  sapply(function(x) stringr::str_extract(x, "[0123456789.]*")) %>%
-  as.numeric() 
-
-plot(t)
 
 
 
