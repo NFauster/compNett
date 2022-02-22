@@ -28,6 +28,17 @@ degree <- function(edge_list, directed = FALSE){
   
   require(magrittr)
   
+  # Check parameters ----
+  if(!is.matrix(edge_list)){
+    stop("Argument edge_list must be a two column matrix.")
+  } else if (ncol(edge_list) !=2 & ncol(edge_list) >= 1){
+    stop("Argument edge_list must be a two column matrix.")
+  }
+  
+  if(!is.logical(directed)){
+    stop("Argument directed must be a logical value.")
+  }
+  
   # Directed network
   if(directed){
     ## Out degrees
@@ -47,7 +58,7 @@ degree <- function(edge_list, directed = FALSE){
     ## Return
     return(list("in_deg" = in_degrees,
                 "out_deg" = out_degrees))
-  }else {
+  } else {
     # Undirected network
     node_freq <- as.vector(edge_list) %>%
       table(useNA = "no")
@@ -80,6 +91,17 @@ recode_edge_list <- function(edge_list){
   require(magrittr)
   require(dplyr)
   
+  # Check parameters ----
+  if(!is.matrix(edge_list)){
+    stop("Argument edge_list must be a two column matrix.")
+  } else if (ncol(edge_list) !=2 & ncol(edge_list) >= 1){
+    stop("Argument edge_list must be a two column matrix.")
+  }
+  
+  if(!is.logical(directed)){
+    stop("Argument directed must be a logical value.")
+  }
+  
   # Existing node names
   old_nodes <- edge_list %>%
     as.vector() %>%
@@ -103,13 +125,67 @@ recode_edge_list <- function(edge_list){
 }
 
 
+generate_cycle_graph <- function(n_node){
+  # This function generates a network with the specified number of nodes.
+  # The nodes of a the graph generated are linked to a circle, i.e. every node
+  # has degree two (if undirected) or in- and out-degree both one (if directed).
+  #
+  # Arguments
+  # n_nodes     numeric value specifying the number of nodes the graph should have
+  #
+  # Value
+  # The generated network is given as an edge list, a two column matrix. 
+  # The two columns indicate start- and end-node of the edge.
+  
+  if(!is.numeric(n_node)){
+    stop("Argument n_node must be numeric, a whole number greater or equal than 1.")
+  } else if (n_node < 1 | n_node %% 1){
+    stop("Argument n_node must be numeric, a whole number greater or equal than 1.")
+  } else if(n_node == 1){
+    return(matrix(c(1,1),
+                  ncol = 2))
+  } 
+  
+  matrix(c(1, rep(2:n_node, rep(2, n_node-1)), 1),
+         ncol = 2,
+         byrow = TRUE)
+}
+
+
 
 
 # Parameters ----
-number_nodes <- 3e3
-nodes_init_graph <- 1      ## Size of initial (seed) graph
-init_graph <- matrix(ncol = 2)     ## Or specify inital graph (edge list)
+number_nodes <- 1e3
+nodes_init_graph <- 2      ## Size of initial (seed) graph
+init_graph <- matrix(c(1,2,2,3,3,4,4,1,1,3), ncol = 2, byrow = T)     ## Or specify inital graph (edge list)
+# init_graph <- NULL
 
+
+## Check parameters ====
+if(!is.numeric(number_nodes)){
+  stop("Argument number_nodes must be numeric, a whole number greater or equal than 1.")
+} else if (number_nodes < 1 | number_nodes %% 1){
+  stop("Argument number_nodes must be numeric, a whole number greater or equal than 1.")
+}
+
+
+if(!is.numeric(nodes_init_graph)){
+  stop("Argument nodes_init_graph must be numeric, a whole number greater or equal than 1.")
+} else if (nodes_init_graph < 1 | nodes_init_graph %% 1){
+  stop("Argument nodes_init_graph must be numeric, a whole number greater or equal than 1.")
+} else if (nodes_init_graph == 1){
+  message("nodes_init_grpah is chosen 1")
+}
+
+
+if(!is.null(init_graph)){
+  if(!is.matrix(init_graph)){
+    stop("Argument init_graph must be a two column matrix.")
+  } else if (ncol(init_graph) !=2 & ncol(init_graph) >= 1){
+    stop("Argument init_graph must be a two column matrix.")
+  }
+}
+  
 
 # Generate graph ----
 ## RVs ====
@@ -119,26 +195,41 @@ R_nodes <- sample(1:1e1, number_nodes, replace = TRUE)
 
 
 ## Initial graph ====
-## TODO: Implement inital graph with parameterized nodes or given seed graph
-edge_list <- matrix(nrow = number_nodes, ncol = 3)
-edge_list[1,] <- c(1,1,0)
+if(is.null(init_graph)){
+  if(nodes_init_graph == 1){
+    message("One node with self loop is chosen as seed graph.")
+  }
+  
+  init_graph <- generate_cycle_graph(nodes_init_graph)
+} else{
+  init_graph <- recode_edge_list(init_graph)
+}
 
-n <- edge_list[,-3] %>%
-  as.vector() %>%
-  unique() %>% 
-  na.omit() %>%
-  length()    # number of nodes in the current (inital) graph
+crt_nodes <- max(init_graph) # number of nodes in the current (inital) graph
+crt_edges <- nrow(init_graph)
 
+edge_list <- matrix(nrow = number_nodes + crt_edges - crt_nodes,
+                    ncol = 3)
+
+edge_list[1:crt_edges,] <- cbind(init_graph,
+                                        rep(0, crt_edges))
+
+# # TODO: timer
+# tictoc::tic.clearlog()
 
 
 ## Iteration ====
-while(n < number_nodes){
+
+# tictoc::tic()
+while(crt_nodes < number_nodes){
+  # tictoc::tic()
   degrees <- degree(edge_list[,-3, drop = FALSE])
+  # tictoc::toc(log = T, quiet = T)
   
-  P <- sample(1:n, 
-              R_nodes[n], 
+  P <- sample(1:crt_nodes, 
+              R_nodes[crt_nodes], 
               replace = TRUE,
-              prob = degrees[names(degrees) %in% 1:n]) %>%
+              prob = degrees[names(degrees) %in% 1:crt_nodes]) %>%
     unique()
   
   fittest_node <- fitness[names(fitness) %in% P] %>%
@@ -147,12 +238,23 @@ while(n < number_nodes){
     names() %>%
     as.numeric()
   
-  n <- n + 1                # one node is added each step
+  crt_nodes <- crt_nodes + 1                # one node is added each step
+  crt_edges <- crt_edges + 1                # one edge is added each step
   
-  edge_list[n,] <- c(fittest_node, n, n-1)
+  edge_list[crt_edges,] <- c(fittest_node,
+                             crt_nodes, 
+                             edge_list[crt_edges-1,3]+1)
   
   
 }
+# tictoc::toc()
+
+
+# t <- tictoc::tic.log(format = T) %>%
+#   sapply(function(x) stringr::str_extract(x, "[0123456789.]*")) %>%
+#   as.numeric() 
+# 
+# plot(t)
 
 
 
