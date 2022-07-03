@@ -128,4 +128,80 @@ degree <- function(edge_list, directed = FALSE){
   }
 }
 
-l
+list_neighbourhood <- function(edge_list, directed){
+  # This function lists the neighbourhood for every node in the network given
+  # by the edge list. If the network is directed, the incoming and and outgoing
+  # neighbourhood is listed.
+  # Note: The neighbourhood of a node "u" is the set of all adjacent nodes, i.e.
+  # all nodes which are directly connected by an edge to the node "u". The node
+  # "u" is not considered a neighbour to itself in the case of self-loops.
+  # For directed networks, the incoming neighbourhood of "u" is the set of all 
+  # adjacent nodes, where the connecting edges point towards "u". The outgoing 
+  # neighbourhood is defined analogously for connecting edges point away from
+  # the node "u" (Brandes, Ortmann 2017: 3f).
+  #
+  # Arguments
+  # edge_list         a two-column matrix with one row for each edge in the
+  #                   network. The two columns indicate start- and end-node
+  #                   of the edge. If directed = TRUE, the first column is
+  #                   interpreted as starting point.
+  # directed          logical. If TRUE, the network is interpreted as directed,
+  #                   otherwise undirected.
+  #
+  # Value
+  # If directed is FALSE, the result is a list with one vector for each node in
+  # the network. The names for the list entries are the nodes' names, each 
+  # vector gives that node's neighbourhood.
+  # If directed is TRUE, the result is a named list with thre list of the kind
+  # just described for undirected case. On list is for the incoming neighbour-
+  # hood (in_neighbour), one for the outgoing neighbourhood (out_neighbour), one
+  # for the total neighbourhood.
+  
+  
+  # Check parameters ----
+  if(!is.matrix(edge_list)){
+    stop("Argument edge_list must be a two column matrix.")
+  } else if (ncol(edge_list) !=2 & ncol(edge_list) >= 1){
+    stop("Argument edge_list must be a two column matrix.")
+  }
+  
+  if(!is.logical(directed)){
+    stop("Argument directed must be a logical value.")
+  }
+  
+  
+  # Main ----
+  ## number of nodes in network
+  n_node <- max(edge_list)
+  
+  ## initialise list for incoming and outgoing neighbourhood
+  incoming <- vector(mode = "list", length = n_node)
+  outgoing <- vector(mode = "list", length = n_node)
+  total <- vector(mode = "list", length = n_node)
+  
+  
+  for (i in 1:max(edge_list)) {
+    ## look for edges ending at node i
+    if (i %in% edge_list[,2]) incoming[[i]] <- edge_list[edge_list[,2] == i,1]
+    
+    ## look for edges starting at node i
+    if (i %in% edge_list[,1]) outgoing[[i]] <- edge_list[edge_list[,1] == i,2]
+    
+    ## take the intersection of incoming and outgoing neigbourhood
+    total[[i]] <- unique(c(incoming[[i]], outgoing[[i]]))
+  }
+  
+  
+  
+  # Return ----
+  if (directed) {
+    result <- list("in_neighbourhood" = incoming,
+                   "out_neighbourhood" = outgoing,
+                   "total_neighbourhood" = total)
+  }  else result <- total
+  
+  return(result)
+  
+  
+  
+}
