@@ -168,7 +168,7 @@ degree <- function(edge_list, directed = FALSE){
   }
 }
 
-list_neighbourhood <- function(edge_list, directed){
+list_neighbourhood <- function(edge_list, directed = FALSE){
   # This function lists the neighbourhood for every node in the network given
   # by the edge list. If the network is directed, the incoming and and outgoing
   # neighbourhood is listed.
