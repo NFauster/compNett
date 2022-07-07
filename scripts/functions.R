@@ -59,6 +59,46 @@ recode_edge_list <- function(edge_list){
 }
 
 
+redirect_edge <- function(edge){
+  # This function takes an edge of a network and redirects it such that it
+  # starts at the node with lower degree and points to the node with higher
+  # degree.
+  # As indicator of which node has the higher degree, the name of the nodes
+  # are used. The higher-named node is considered the node with higher degree.
+  # Instead of using the degree, other criteria for redirecting may be used.
+  # The information has just to be reported over the node names.
+  #
+  # Arguments
+  # edge              a numeric vector with length 2, representing an edge
+  #                   between two nodes.
+  #
+  # Value
+  # A numeric vector with length 2, representing an edge starting at the node
+  # with lower degree and pointing to the node with the higher degree.
+  
+  
+  # Check parameters ----
+  if(!is.vector(edge, mode = "numeric")){
+    stop("Argument edge must be a numeric vector with two elements.")
+  } else if (length(edge) !=2){
+    stop("Argument edge must be a numeric vector with two elements.")
+  }
+  
+  
+  # Main ----
+  
+  names(edge) <- NULL
+  if(edge[1] < edge[2]) {
+    ## already correct direction
+    result <- edge
+  } else {
+    result <- c(edge[2], edge[1])
+  }
+  
+  return(result)
+}
+
+
 # Network statistics ----
 degree <- function(edge_list, directed = FALSE){
   # This function computes the degree for every node in the network given
@@ -201,7 +241,4 @@ list_neighbourhood <- function(edge_list, directed){
   }  else result <- total
   
   return(result)
-  
-  
-  
 }
