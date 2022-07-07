@@ -32,6 +32,8 @@ Summer 2022 (starting June): Testing of code on of full-sized networks with diff
 02-03-2021: Topic allocated: Comparison of Large Networks (Supervisor: Dr Nic Freeman)
 12-03-2021: First meeting Nic
 09-07-2021: Second meeting Nic
+08-06-2022: Third meeting Nic (in person, Sheffield)
+07-07-2022: v0.1 sent, contents & brief outline for chapters
 
 
 ## Ethics
