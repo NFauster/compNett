@@ -8,6 +8,26 @@ library(dplyr)
 source(here::here("scripts/functions.R"))
 
 
+# Example data ----
+## Ex 1 ====
+edge_list <- matrix(c(1,3,
+                      1,2,
+                      2,3,
+                      2,4),
+                    ncol = 2,
+                    byrow = T)
+
+
+## Ex 2 ====
+edge_list <- matrix(c(1,3,
+                      5,1,
+                      2,3,
+                      2,5,
+                      3,4,
+                      5,3,
+                      4,5),
+                    ncol = 2,
+                    byrow = T)
 
 
 # Graph properties ----
@@ -66,7 +86,7 @@ for(u in 2:n_nodes){
   mark[u_N_in] <- mark[u_N_in]+1
   
   for(v in u_N_in){
-    mark[v] <- mark[v] -1
+    mark[v] <- mark[v] - 1
     
     
     v_N <- neighbourhood$total_neighbourhood[[v]]     # N(v)
