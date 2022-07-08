@@ -29,6 +29,9 @@ edge_list <- matrix(c(1,3,
                     ncol = 2,
                     byrow = T)
 
+## Ex 3 ====
+edge_list <- igraph::as_edgelist(igraph::erdos.renyi.game(10, p.or.m = .2))
+
 
 # Graph properties ----
 n_nodes <- max(edge_list)     # number of nodes
@@ -133,3 +136,8 @@ for(u in 2:n_nodes){
     }
   }
 }
+
+
+
+# Check with orca ----
+orca::count4(matrix(as.integer(edge_list),ncol=2,byrow=F))
