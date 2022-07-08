@@ -61,41 +61,55 @@ neighbourhood <- list_neighbourhood(edge_list_rename_redirect,
 
 # Algorithm ----
 for(u in 2:n_nodes){
-  u_N_in <- neighbourhood$in_neighbourhood[[u]] # N-(u)
+  u_N_in <- neighbourhood$in_neighbourhood[[u]]         # N-(u)
   
-  if (!is.null(u_N_in)){
-    mark[u_N_in] <- mark[u_N_in]+1
+  mark[u_N_in] <- mark[u_N_in]+1
+  
+  for(v in u_N_in){
+    mark[v] <- mark[v] -1
     
-    for(v in u_N_in){
-      mark[v] <- mark[v] -1
+    
+    v_N <- neighbourhood$total_neighbourhood[[v]]     # N(v)
+    v_N_sel <- v_N[v_N < u]                           # {w e N(v): w<u}
+    
+    visited[v_N_sel] <- visited[v_N_sel] + 1
+    processed[v_N_sel] <- processed[v_N_sel] + 1
+    
+    #####
+    v_N_out <- neighbourhood$out_neighbourhood[[v]]   # N+(v)
+    v_N_out_sel <- v_N_out[v_N_out < u]               # {w e N+(v): w<u}
+    
+    mark[v_N_out_sel] <- mark[v_N_out_sel] + 2
+    for(w in v_N_out_sel){
+      mark[w] <- mark[w] - 2
       
-      v_N <- neighbourhood$total_neighbourhood[[v]]   # N(v)
-      if(!is.null(v_N)) {
-        visited[v_N] <- visited[v_N] + 1
-        processed[v_N] <- processed[v_N] + 1
-      }
-      
-      v_N_out <- neighbourhood$out_neighbourhood[[v]]   # N+(v)
-      if(!is.null(v_N_out)) {
-        mark[v_N_out] <- mark[v_N_out] + 2
+      if(mark[w] != 0){
+        k3[c(u,v,w)] <- k3[c(u,v,w)] + 1
         
-        for(w in v_N_out){
-          mark[w] <- mark[w] - 2
-          
-          if(mark[w] != 0){
-            k3[c(u,v,w)] <- k3[c(u,v,w)] + 1
-            
-            w_N_out <- neighbourhood$out_neighbourhood[[w]]   # N+(w)
-            if(!is.null(w_N_out)){
-              for(x in w_N_out){
-                if(mark[x] == 3) k4[c(x,w,v,u)] <- k4[c(x,w,v,u)] + 1
-              }
-            }
-          }
+        ###
+        w_N_out <- neighbourhood$out_neighbourhood[[w]]   # N+(w)
+        w_N_out_sel <- w_N_out[w_N_out < u]               # {x e N+(w): x<u}
+        
+        for(x in w_N_out_sel){
+          if(mark[x] == 3) k4[c(x,w,v,u)] <- k4[c(x,w,v,u)] + 1
         }
       }
-     }
+    }
   }
   
   
+  for(v in u_N_in){
+    v_N <- neighbourhood$total_neighbourhood[[v]]     # N(v)
+    v_N_sel <- v_N[v_N < u]                           # {w e N(v): w<u}
+    
+    for(w in v_N_sel){
+      processed[w] <- processed[w] - 1
+      if(visited[w] > 0) c4[v] <- c4[v] + visited[w] - 1
+      
+      if(processed[w] == 0){
+        c4[c(u,w)] <- c4[c(u,w)] + choose(visited[w], 2)
+        visited[w] <- 0
+      }
+    }
+  }
 }
