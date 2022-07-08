@@ -172,6 +172,7 @@ list_neighbourhood <- function(edge_list, directed = FALSE){
   # This function lists the neighbourhood for every node in the network given
   # by the edge list. If the network is directed, the incoming and and outgoing
   # neighbourhood is listed.
+  # The neighbourhoods will be sorted according to the node name.
   # Note: The neighbourhood of a node "u" is the set of all adjacent nodes, i.e.
   # all nodes which are directly connected by an edge to the node "u". The node
   # "u" is not considered a neighbour to itself in the case of self-loops.
@@ -196,6 +197,8 @@ list_neighbourhood <- function(edge_list, directed = FALSE){
   # just described for undirected case. On list is for the incoming neighbour-
   # hood (in_neighbour), one for the outgoing neighbourhood (out_neighbour), one
   # for the total neighbourhood.
+  
+  require(magrittr)
   
   
   # Check parameters ----
@@ -222,13 +225,20 @@ list_neighbourhood <- function(edge_list, directed = FALSE){
   
   for (i in 1:max(edge_list)) {
     ## look for edges ending at node i
-    if (i %in% edge_list[,2]) incoming[[i]] <- edge_list[edge_list[,2] == i,1]
+    if (i %in% edge_list[,2]) {
+      incoming[[i]] <- edge_list[edge_list[,2] == i,1] %>%
+        sort()
+    } 
     
     ## look for edges starting at node i
-    if (i %in% edge_list[,1]) outgoing[[i]] <- edge_list[edge_list[,1] == i,2]
+    if (i %in% edge_list[,1]) {
+      outgoing[[i]] <- edge_list[edge_list[,1] == i,2] %>%
+        sort()
+    } 
     
     ## take the intersection of incoming and outgoing neigbourhood
-    total[[i]] <- unique(c(incoming[[i]], outgoing[[i]]))
+    total[[i]] <- unique(c(incoming[[i]], outgoing[[i]])) %>%
+      sort()
   }
   
   
