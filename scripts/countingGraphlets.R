@@ -30,7 +30,7 @@ edge_list <- matrix(c(1,3,
                     byrow = T)
 
 ## Ex 3 ====
-edge_list <- igraph::as_edgelist(igraph::erdos.renyi.game(10, p.or.m = .2))
+edge_list <- igraph::as_edgelist(igraph::erdos.renyi.game(1e3, p.or.m = .2))
 
 
 # Graph properties ----
@@ -83,6 +83,7 @@ neighbourhood <- list_neighbourhood(edge_list_rename_redirect,
 
 
 # Algorithm ----
+tictoc::tic()
 for(u in 2:n_nodes){
   u_N_in <- neighbourhood$in_neighbourhood[[u]]         # N-(u)
   
@@ -136,8 +137,10 @@ for(u in 2:n_nodes){
     }
   }
 }
-
+tictoc::toc()
 
 
 # Check with orca ----
+tictoc::tic()
 orca::count4(matrix(as.integer(edge_list),ncol=2,byrow=F))
+tictoc::toc()
