@@ -1,5 +1,16 @@
-#include <Rcpp.h>
+#include <RcppArmadillo.h>
+
+// [[Rcpp::depends(RcppArmadillo)]]
+
 using namespace Rcpp;
+using namespace arma;
+
+
+double chooseC(double n, double k) {
+	// as proposed by Dirk Eddelbuettel 
+	// https://stackoverflow.com/questions/25005216/n-choose-k-function-crashes-rcpp
+  return Rf_choose(n, k);
+}
 
 // [[Rcpp::export]]
 List countOrtmann(IntegerMatrix edge_list){
@@ -68,6 +79,26 @@ List countOrtmann(IntegerMatrix edge_list){
 							k4[x-1] ++;
 						}
 					}
+				}
+			}
+		}
+		
+		for(int v: u_N_in){
+			IntegerVector v_N = as<List>(neighbourhood["total_neighbourhood"])[v-1];
+			IntegerVector v_N_sel = v_N[v_N < u];
+			
+			for(int w: v_N_sel){
+				processed[w-1] --;
+				
+				if(visited[w-1] > 0){
+					c4[v-1] += visited[w-1] - 1;
+				}
+				
+				if(processed[w-1] == 0){
+					c4[u-1] += chooseC(visited[w-1], 2);
+					c4[w-1] += chooseC(visited(w-1), 2);
+					
+					visited[w-1] = 0;
 				}
 			}
 		}
