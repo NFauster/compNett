@@ -13,9 +13,50 @@ double chooseC(double n, double k) {
 }
 
 // [[Rcpp::export]]
+IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges, 
+							  List neighbourhood, IntegerVector deg,
+							  IntegerVector k3, IntegerVector c4, IntegerVector k4){
+								  
+	IntegerVector nn(20,0);
+	IntegerVector ni(20,0);
+	
+	IntegerVector crt_N = as<List>(neighbourhood["total_neighbourhood"])[crt_node - 1];
+	IntegerVector deg_N = deg[crt_N-1];
+	
+	int dv_2 = 0;
+	for(int i = 0; i < n_nodes; i++){
+		dv_2 += chooseC(deg[i], 2);
+	}
+	
+	nn[0] = chooseC(n_nodes - 1, 3);
+	nn[1] = chooseC(n_nodes - 2, 2) * deg[crt_node - 1];
+	nn[2] = (n_edges - deg[crt_node - 1])*(n_nodes - 3);
+	nn[3] = crt_N.length()*n_edges - sum(deg_N) - deg[crt_node - 1]*(deg[crt_node - 1] - 1);
+	nn[4] = chooseC(deg[crt_node], 2) * (n_nodes - 3);
+	nn[5] = (n_edges - 3)*(sum(deg_N) - deg[crt_node - 1]);
+	nn[6] = dv_2 - chooseC(deg[crt_node - 1], 2) - sum(deg_N) + deg[crt_node - 1];
+	nn[7] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[8] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[9] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[10] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[11] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[12] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[13] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[14] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[14] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[15] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[16] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[17] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[18] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[19] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	
+	return nn;
+}
+
+// [[Rcpp::export]]
 List countOrtmann(IntegerMatrix edge_list){
 	int n_nodes = max(edge_list);
-	//int n_edges = nrow(edge_list);
+	int n_edges = edge_list.nrow();
 	
 	// initialising variables
 	IntegerVector k3(n_nodes,0);
@@ -28,10 +69,13 @@ List countOrtmann(IntegerMatrix edge_list){
 	
 	//call R function
 	Function list_neighbourhood("list_neighbourhood");
+	Function degree("degree");
 	
 	// Compute neighbourhoods
-	List neighbourhood = list_neighbourhood(edge_list,
-                                    Named("directed") = true);
+	List neighbourhood = list_neighbourhood(edge_list, Named("directed") = true);
+									
+	// Compute degree vector
+	IntegerVector deg = degree(edge_list, Named("directed") = false);
 	
 	
 	// Algorithm
@@ -103,7 +147,22 @@ List countOrtmann(IntegerMatrix edge_list){
 			}
 		}
 		
+		
 	}
+	
+	
+	// solve system of equations
+	IntegerMatrix all_induced_counts (n_nodes, 20);
+	
+	for(int t = 1; t <= n_nodes; t++){
+		all_induced_counts(t-1, _) = induced_orbits(t, n_nodes, n_edges, 
+							  neighbourhood, deg,
+							  k3, c4, k4);
+	}
+	
+	
 
-	return List::create(k3, c4, k4);
+	return List::create(k3, c4, k4, all_induced_counts);
 }
+
+
