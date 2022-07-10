@@ -225,16 +225,16 @@ list_neighbourhood <- function(edge_list, directed = FALSE){
   
   for (i in 1:max(edge_list)) {
     ## look for edges ending at node i
-    if (i %in% edge_list[,2]) {
+    # if (i %in% edge_list[,2]) {
       incoming[[i]] <- edge_list[edge_list[,2] == i,1] %>%
         sort()
-    } 
+    # } 
     
     ## look for edges starting at node i
-    if (i %in% edge_list[,1]) {
+    # if (i %in% edge_list[,1]) {
       outgoing[[i]] <- edge_list[edge_list[,1] == i,2] %>%
         sort()
-    } 
+    # } 
     
     ## take the intersection of incoming and outgoing neigbourhood
     total[[i]] <- unique(c(incoming[[i]], outgoing[[i]])) %>%
