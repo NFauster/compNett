@@ -14,7 +14,7 @@ double chooseC(double n, double k) {
 
 // [[Rcpp::export]]
 IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges, 
-							  List neighbourhood, IntegerVector deg,
+							  List neighbourhood, IntegerVector deg, IntegerMatrix edge_list,
 							  IntegerVector k3, IntegerVector c4, IntegerVector k4){
 								  
 	IntegerVector nn(20,0);
@@ -35,20 +35,23 @@ IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges,
 	nn[4] = chooseC(deg[crt_node], 2) * (n_nodes - 3);
 	nn[5] = (n_edges - 3)*(sum(deg_N) - deg[crt_node - 1]);
 	nn[6] = dv_2 - chooseC(deg[crt_node - 1], 2) - sum(deg_N) + deg[crt_node - 1];
-	nn[7] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[8] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[9] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[10] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[11] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[12] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[13] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[14] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[14] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[15] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[16] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[17] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[18] = (n_edges - deg[crt_node])*(n_nodes - 3);
-	nn[19] = (n_edges - deg[crt_node])*(n_nodes - 3);
+	nn[7] = k3[crt_node - 1]*(n_nodes - 3);
+	nn[8] = sum(k3)/3 - k3[crt_node - 1];
+	nn[9] = (n_edges - deg[crt_node])*(n_nodes - 3); // todo
+	nn[10] = (n_edges - deg[crt_node])*(n_nodes - 3); //todo
+	nn[11] = chooseC(deg[crt_node - 1], 3);
+	
+	for(int v: crt_N){
+		nn[12] += chooseC(deg[v - 1] - 1, 2);
+	}
+	
+	nn[13] = k3[crt_node - 1]*(deg[crt_node - 1] - 2);
+	nn[14] = (n_edges - deg[crt_node])*(n_nodes - 3);//todo
+	nn[15] = (n_edges - deg[crt_node])*(n_nodes - 3);//todo
+	nn[16] = (n_edges - deg[crt_node])*(n_nodes - 3);//todo
+	nn[17] = (n_edges - deg[crt_node])*(n_nodes - 3);//todo
+	nn[18] = (n_edges - deg[crt_node])*(n_nodes - 3);//todo
+	nn[19] = k4[crt_node - 1];
 	
 	return nn;
 }
@@ -62,6 +65,14 @@ List countOrtmann(IntegerMatrix edge_list){
 	IntegerVector k3(n_nodes,0);
 	IntegerVector c4(n_nodes,0);
 	IntegerVector k4(n_nodes,0);
+	
+	IntegerMatrix k3_edge(n_edges, 3);
+	IntegerMatrix k4_edge(n_edges, 3);
+	IntegerMatrix c4_edge(n_edges, 3);
+	
+	int k3_edge_index = 0;
+	int k4_edge_index = 0;
+	int c4_edge_index = 0;
 	
 	IntegerVector mark(n_nodes,0);
 	IntegerVector visited(n_nodes,0);
@@ -156,7 +167,7 @@ List countOrtmann(IntegerMatrix edge_list){
 	
 	for(int t = 1; t <= n_nodes; t++){
 		all_induced_counts(t-1, _) = induced_orbits(t, n_nodes, n_edges, 
-							  neighbourhood, deg,
+							  neighbourhood, deg, edge_list,
 							  k3, c4, k4);
 	}
 	
