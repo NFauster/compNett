@@ -42,7 +42,7 @@ IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges,
 	nn[2] = (n_edges - deg[crt_node - 1])*(n_nodes - 3);
 	nn[3] = crt_N.length()*n_edges - sum(deg_N) - deg[crt_node - 1]*(deg[crt_node - 1] - 1);
 	nn[4] = chooseC(deg[crt_node - 1], 2) * (n_nodes - 3);
-	nn[5] = (n_edges - 3)*(sum(deg_N) - deg[crt_node - 1]);
+	nn[5] = (n_nodes - 3)*(sum(deg_N) - deg[crt_node - 1]);
 	nn[6] = dv_2 - chooseC(deg[crt_node - 1], 2) - sum(deg_N) + deg[crt_node - 1];
 	nn[7] = k3[crt_node - 1]*(n_nodes - 3);
 	nn[8] = sum(k3)/3 - k3[crt_node - 1];
