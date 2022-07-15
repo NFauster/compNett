@@ -13,13 +13,13 @@ double chooseC(double n, double k) {
   return Rf_choose(n, k);
 }
 
-IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges, 
+IntegerVector non_induced_orbits (int crt_node, int n_nodes, int n_edges, 
 							  List neighbourhood, IntegerVector deg, IntegerMatrix edge_list,
 							  IntegerVector k3, IntegerVector c4, IntegerVector k4,
 							  IntegerVector k3_edge[], IntegerVector completing_triangle[]){
 								  
 	IntegerVector nn(20,0);
-	IntegerVector ni(20,0);
+	//IntegerVector ni(20,0);
 	
 	IntegerVector crt_N = as<List>(neighbourhood["total_neighbourhood"])[crt_node - 1];
 	IntegerVector deg_N = deg[crt_N-1];
@@ -84,6 +84,37 @@ IntegerVector induced_orbits (int crt_node, int n_nodes, int n_edges,
 	
 	return nn;
 }
+
+IntegerVector compute_induced_orbits(IntegerVector nn){
+	arma::vec nn_arma = as<arma::vec>(wrap(nn));
+	
+	arma::mat LEM = {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+					 {0, 1, 0, 1, 2, 1, 0, 2, 0, 2, 1, 3, 1, 3, 2, 1, 2, 2, 3, 3},
+					 {0, 0, 1, 1, 0, 1, 2, 1, 3, 1, 2, 0, 2, 1, 2, 3, 2, 3, 2, 3},
+					 {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 2, 2, 2, 3},
+					 {0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 3, 0, 3, 1, 0, 1, 1, 3, 3},
+					 {0, 0, 0, 0, 0, 1, 0, 2, 0, 1, 1, 0, 2, 2, 3, 2, 2, 4, 4, 6},
+					 {0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 1, 0, 1, 0, 1, 3, 1, 3, 1, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 2, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 1, 0, 2, 2, 4, 6},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, 4, 2, 6},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 2, 1, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 2, 6},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
+					 
+	arma::vec ni_arma = solve(LEM, nn_arma);
+	
+	Rcpp::IntegerVector ni   = as<IntegerVector>(wrap(ni_arma));
+	return ni;
+}
+
 
 // [[Rcpp::export]]
 List countOrtmann(IntegerMatrix edge_list){
@@ -257,17 +288,20 @@ List countOrtmann(IntegerMatrix edge_list){
 	
 	
 	// solve system of equations
+	IntegerMatrix all_non_induced_counts (n_nodes, 20);
 	IntegerMatrix all_induced_counts (n_nodes, 20);
 	
 	for(int t = 1; t <= n_nodes; t++){
-		all_induced_counts(t-1, _) = induced_orbits(t, n_nodes, n_edges, 
+		all_non_induced_counts(t-1, _) = non_induced_orbits(t, n_nodes, n_edges, 
 							  neighbourhood, deg, edge_list,
 							  k3, c4, k4, k3_edge, completing_triangle);
+							  
+		all_induced_counts(t-1, _) = compute_induced_orbits(all_non_induced_counts(t-1, _));
 	}
 	
 	
 
-	return List::create(k3, c4, k4, all_induced_counts);
+	return List::create(k3, c4, k4, all_non_induced_counts, all_induced_counts);
 }
 
 
