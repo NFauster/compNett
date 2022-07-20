@@ -13,6 +13,15 @@ double chooseC(double n, double k) {
   return Rf_choose(n, k);
 }
 
+double spearman(IntegerVector x, IntegerVector y){
+    // calling rnorm()
+    Function spearman("spearman");  
+	NumericVector result = spearman(x, y);
+
+    // Next code is interpreted as rnorm(n=5, mean=10, sd=2)
+    return result[0];
+}
+
 IntegerVector non_induced_orbits (int crt_node, int n_nodes, int n_edges, 
 							  List neighbourhood, IntegerVector deg, IntegerMatrix edge_list,
 							  IntegerVector k3, IntegerVector c4, IntegerVector k4,
@@ -308,4 +317,18 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 	return all_induced_counts;
 }
 
-
+// [[Rcpp::export]]
+NumericMatrix GCM(IntegerMatrix induced_orbits){
+	int n_orbits = induced_orbits.ncol();
+	
+	NumericMatrix GCM = NumericMatrix::diag(n_orbits, 1.0);
+	
+	for(int i = 0; i < n_orbits - 1; i++){
+		for(int j = i + 1; j < n_orbits; j++){
+			GCM(i, j) =  spearman(induced_orbits(_, i), induced_orbits(_, j));
+			GCM(j, i) =  spearman(induced_orbits(_, i), induced_orbits(_, j));
+		}
+	}
+	
+	return GCM;
+}
