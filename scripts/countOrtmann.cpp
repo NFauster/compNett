@@ -110,6 +110,8 @@ IntegerVector compute_induced_orbits(IntegerVector nn){
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
 					 
 	arma::vec ni_arma = solve(LEM, nn_arma);
+	arma::uvec index_for_orbits = {1, 5, 4, 7, 10, 9, 12, 11, 16, 15, 14, 13, 17, 18, 19};
+	ni_arma = ni_arma.elem(index_for_orbits);
 	
 	Rcpp::IntegerVector ni   = as<IntegerVector>(wrap(ni_arma));
 	return ni;
@@ -117,7 +119,7 @@ IntegerVector compute_induced_orbits(IntegerVector nn){
 
 
 // [[Rcpp::export]]
-List countOrtmann(IntegerMatrix edge_list){
+IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 	int n_nodes = max(edge_list);
 	int n_edges = edge_list.nrow();
 	
@@ -289,7 +291,7 @@ List countOrtmann(IntegerMatrix edge_list){
 	
 	// solve system of equations
 	IntegerMatrix all_non_induced_counts (n_nodes, 20);
-	IntegerMatrix all_induced_counts (n_nodes, 20);
+	IntegerMatrix all_induced_counts (n_nodes, 15);
 	
 	for(int t = 1; t <= n_nodes; t++){
 		all_non_induced_counts(t-1, _) = non_induced_orbits(t, n_nodes, n_edges, 
@@ -299,9 +301,11 @@ List countOrtmann(IntegerMatrix edge_list){
 		all_induced_counts(t-1, _) = compute_induced_orbits(all_non_induced_counts(t-1, _));
 	}
 	
-	
+	colnames(all_induced_counts) = CharacterVector::create("o0", "o1", "o2", "o3", "o4", "o5",
+															   "o6", "o7", "o8", "o9", "o10", "o11",
+															   "o12", "o13", "o14");
 
-	return List::create(k3, c4, k4, all_non_induced_counts, all_induced_counts);
+	return all_induced_counts;
 }
 
 
