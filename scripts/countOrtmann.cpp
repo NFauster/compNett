@@ -38,13 +38,13 @@ IntegerVector non_induced_orbits (int crt_node, int n_nodes, int n_edges,
 	}
 	
 	nn[0] = chooseC(n_nodes - 1, 3);
-	nn[1] = chooseC(n_nodes - 2, 2) * deg[crt_node - 1];
+	nn[1] = deg[crt_node - 1];
 	nn[2] = (n_edges - deg[crt_node - 1])*(n_nodes - 3);
 	nn[3] = crt_N.length()*n_edges - sum(deg_N) - deg[crt_node - 1]*(deg[crt_node - 1] - 1);
-	nn[4] = chooseC(deg[crt_node - 1], 2) * (n_nodes - 3);
-	nn[5] = (n_nodes - 3)*(sum(deg_N) - deg[crt_node - 1]);
+	nn[4] = chooseC(deg[crt_node - 1], 2);
+	nn[5] = (sum(deg_N) - deg[crt_node - 1]);
 	nn[6] = dv_2 - chooseC(deg[crt_node - 1], 2) - sum(deg_N) + deg[crt_node - 1];
-	nn[7] = k3[crt_node - 1]*(n_nodes - 3);
+	nn[7] = k3[crt_node - 1];
 	nn[8] = sum(k3)/3 - k3[crt_node - 1];
 	nn[9] = (deg[crt_node - 1] - 1)*(sum(deg_N) - crt_N.length()) - sum(k3_edge[crt_node - 1]);
 	nn[10] = temp_nn10 - deg[crt_node - 1] * (deg[crt_node - 1] - 1) - 2*k3[crt_node - 1];
@@ -89,13 +89,13 @@ IntegerVector compute_induced_orbits(IntegerVector nn){
 	arma::vec nn_arma = as<arma::vec>(wrap(nn));
 	
 	arma::mat LEM = {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-					 {0, 1, 0, 1, 2, 1, 0, 2, 0, 2, 1, 3, 1, 3, 2, 1, 2, 2, 3, 3},
+					 {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					 {0, 0, 1, 1, 0, 1, 2, 1, 3, 1, 2, 0, 2, 1, 2, 3, 2, 3, 2, 3},
 					 {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 2, 2, 2, 3},
-					 {0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 3, 0, 3, 1, 0, 1, 1, 3, 3},
-					 {0, 0, 0, 0, 0, 1, 0, 2, 0, 1, 1, 0, 2, 2, 3, 2, 2, 4, 4, 6},
+					 {0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+					 {0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					 {0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 1, 0, 1, 0, 1, 3, 1, 3, 1, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 2, 3},
+					 {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					 {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1},
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 1, 0, 2, 2, 4, 6},
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, 4, 2, 6},
