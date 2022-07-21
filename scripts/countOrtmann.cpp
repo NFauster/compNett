@@ -14,12 +14,17 @@ double chooseC(double n, double k) {
 }
 
 double spearman(IntegerVector x, IntegerVector y){
-    // calling rnorm()
+    
     Function spearman("spearman");  
 	NumericVector result = spearman(x, y);
-
-    // Next code is interpreted as rnorm(n=5, mean=10, sd=2)
-    return result[0];
+	
+	LogicalVector check_NA = is_na(result);
+	
+    if(check_NA[0] == TRUE){
+		return 0.0;
+	}
+	
+	return result[0];
 }
 
 IntegerVector non_induced_orbits (int crt_node, int n_nodes, int n_edges, 
@@ -331,4 +336,19 @@ NumericMatrix GCM(IntegerMatrix induced_orbits){
 	}
 	
 	return GCM;
+}
+
+// [[Rcpp::export]]
+double GCD(NumericMatrix X, NumericMatrix Y){
+	int n_orbits = X.ncol();
+	
+	double GCD;
+	
+	for(int i = 0; i < n_orbits - 1; i++){
+		for(int j = i + 1; j < n_orbits; j++){
+			GCD += pow((X(i, j) - Y(i, j)), 2);
+		}
+	}
+	
+	return sqrt(GCD);
 }
