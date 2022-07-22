@@ -310,13 +310,13 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 			for(unsigned int w: v_N_sel){
 				processed[w-1] --;
 				
-				if(visited[w-1] > 0){
-					c4[v-1] += visited[w-1] - 1;
-				}
+				clock.tick("count_c4_if");
+				c4[v-1] += max(visited[w-1] - 1, 0);
+				clock.tock("count_c4_if");
 				
 				if(processed[w-1] == 0){
 					c4[u-1] += chooseC(visited[w-1], 2);
-					c4[w-1] += chooseC(visited(w-1), 2);
+					c4[w-1] += chooseC(visited[w-1], 2);
 					
 					visited[w-1] = 0;
 				}
