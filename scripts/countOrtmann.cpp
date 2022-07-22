@@ -32,14 +32,13 @@ double spearman(IntegerVector x, IntegerVector y){
 IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, unsigned int n_edges, 
 							  IntegerVector neighbourhood[][3], IntegerVector deg,
 							  IntegerVector k3, IntegerVector c4, IntegerVector k4,
-							  IntegerVector k3_edge[], IntegerVector completing_triangle[]){
-								  
+							  IntegerVector k3_edge[], vector<unsigned int> completing_triangle[]){
+	Rcpp::Clock clock;
 	IntegerVector nn(20,0);
 	//IntegerVector ni(20,0);
 	
 	IntegerVector crt_N = neighbourhood[crt_node - 1][0];
 	IntegerVector deg_N = deg[crt_N-1];
-	IntegerVector crt_T = completing_triangle[crt_node - 1];
 	
 	unsigned int dv_2 = 0;
 	for(unsigned int i = 0; i < n_nodes; i++){
@@ -72,8 +71,9 @@ IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, u
 	
 	nn[13] = k3[crt_node - 1]*(deg[crt_node - 1] - 2);
 	
-	for(unsigned int i = 0; i < crt_T.length(); i += 2){
-		nn[14] += deg[crt_T[i] - 1] + deg[crt_T[i+1] - 1] - 4;
+	for(unsigned int i = 0; i < completing_triangle[crt_node - 1].size(); i += 2){
+		nn[14] += deg[completing_triangle[crt_node - 1][i] - 1] + 
+						deg[completing_triangle[crt_node - 1][i+1] - 1] - 4;
 	}
 	
 	nn[15] = sum(as<IntegerVector>(k3[crt_N - 1])) - sum(k3_edge[crt_node - 1]);
@@ -88,8 +88,8 @@ IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, u
 	}
 	
 	nn[17] = -k3[crt_node - 1];
-	for(unsigned int i = 0; i < crt_T.length(); i += 2){
-		nn[17] += as<IntegerVector>(k3_edge[crt_T[i] - 1])[to_string(crt_T[i + 1])];
+	for(unsigned int i = 0; i < completing_triangle[crt_node - 1].size(); i += 2){
+		nn[17] += as<IntegerVector>(k3_edge[completing_triangle[crt_node - 1][i] - 1])[to_string(completing_triangle[crt_node - 1][i + 1])];
 	}
 	
 	for(unsigned int t:k3_edge[crt_node - 1]){
@@ -97,6 +97,8 @@ IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, u
 	}
 	
 	nn[19] = k4[crt_node - 1];
+	
+	//clock.stop("profiling_non_induced");
 	
 	return nn;
 }
@@ -140,42 +142,8 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 	
 	clock.tick("total_count");
 	
-	clock.tick("init");
 	unsigned int n_nodes = max(edge_list);
-	unsigned int n_edges = edge_list.nrow();
-	
-	// initialising variables
-	IntegerVector k3(n_nodes,0);
-	IntegerVector c4(n_nodes,0);
-	IntegerVector k4(n_nodes,0);
-	
-	IntegerVector k3_edge[n_nodes];
-	for(unsigned int i = 0; i < n_nodes; i++){
-		k3_edge[i] = IntegerVector::create(Named("-1",0));
-	}
-	
-	IntegerVector completing_triangle[n_nodes];
-	/*for(unsigned int i = 0; i < n_nodes; i++){
-		k3_edge[i] = IntegerVector::create(Named("-1",0));
-	}*/
-	
-	/*IntegerVector k4_edge[n_nodes];
-	for(unsigned int i = 0; i < n_nodes; i++){
-		k3_edge[i] = IntegerVector::create(Named("-1",0));
-	}
-	
-	IntegerVector c4_edge[n_nodes];
-	for(unsigned int i = 0; i < n_nodes; i++){
-		k3_edge[i] = IntegerVector::create(Named("-1",0));
-	}*/
-	
-	
-	IntegerVector mark(n_nodes,0);
-	IntegerVector visited(n_nodes,0);
-	IntegerVector processed(n_nodes,0);
-	
-	clock.tock("init");
-	
+	unsigned int n_edges = edge_list.nrow();	
 	
 	//call R function
 	Function list_neighbourhood("list_neighbourhood");
@@ -197,6 +165,28 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 	clock.tick("degree");
 	IntegerVector deg = degree(edge_list, Named("directed") = false);
 	clock.tock("degree");
+	
+	
+	// Initialise variables
+	clock.tick("init");
+	IntegerVector k3(n_nodes,0);
+	IntegerVector c4(n_nodes,0);
+	IntegerVector k4(n_nodes,0);
+	
+	clock.tick("init_k3edge");
+	IntegerVector k3_edge[n_nodes];
+	for(unsigned int i = 1; i <= n_nodes; i++){
+		k3_edge[i - 1] = IntegerVector(neighbourhood[i - 1][0].length());
+		k3_edge[i - 1].names() = neighbourhood[i - 1][0];
+	}
+	clock.tock("init_k3edge");
+	
+	vector<unsigned int> completing_triangle[n_nodes];
+	
+	IntegerVector mark(n_nodes,0);
+	IntegerVector visited(n_nodes,0);
+	IntegerVector processed(n_nodes,0);
+	clock.tock("init");
 	
 	
 	// Algorithm
@@ -246,56 +236,40 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 					k3[v-1] ++;
 					k3[w-1] ++;
 					
+					clock.tick("increment_k3_edge");
 					// increment (u,v)
-					try{
-						k3_edge[u-1][to_string(v)] = k3_edge[u-1][to_string(v)] + 1;
-						k3_edge[v-1][to_string(u)] = k3_edge[v-1][to_string(u)] + 1;
-						}
-					catch(...){
-						k3_edge[u-1].insert(k3_edge[u-1].end(), 1);
-						as<CharacterVector>(k3_edge[u-1].names())[k3_edge[u-1].length()-1] = to_string(v);
-						
-						k3_edge[v-1].insert(k3_edge[v-1].end(), 1);
-						as<CharacterVector>(k3_edge[v-1].names())[k3_edge[v-1].length()-1] = to_string(u);
-					}
+					k3_edge[u-1][to_string(v)] = k3_edge[u-1][to_string(v)] + 1;
+					k3_edge[v-1][to_string(u)] = k3_edge[v-1][to_string(u)] + 1;
 					
 					// increment (w,v)
-					try{
-						k3_edge[w-1][to_string(v)] = k3_edge[w-1][to_string(v)] + 1;
-						k3_edge[v-1][to_string(w)] = k3_edge[v-1][to_string(w)] + 1;
-						}
-					catch(...){
-						k3_edge[w-1].insert(k3_edge[w-1].end(), 1);
-						as<CharacterVector>(k3_edge[w-1].names())[k3_edge[w-1].length()-1] = to_string(v);
-						
-						k3_edge[v-1].insert(k3_edge[v-1].end(), 1);
-						as<CharacterVector>(k3_edge[v-1].names())[k3_edge[v-1].length()-1] = to_string(w);
-					}
+					k3_edge[w-1][to_string(v)] = k3_edge[w-1][to_string(v)] + 1;
+					k3_edge[v-1][to_string(w)] = k3_edge[v-1][to_string(w)] + 1;
 					
 					// increment (u,w)
-					try{
-						k3_edge[u-1][to_string(w)] = k3_edge[u-1][to_string(w)] + 1;
-						k3_edge[w-1][to_string(u)] = k3_edge[w-1][to_string(u)] + 1;
-						}
-					catch(...){
-						k3_edge[u-1].insert(k3_edge[u-1].end(), 1);
-						as<CharacterVector>(k3_edge[u-1].names())[k3_edge[u-1].length()-1] = to_string(w);
-						
-						k3_edge[w-1].insert(k3_edge[w-1].end(), 1);
-						as<CharacterVector>(k3_edge[w-1].names())[k3_edge[w-1].length()-1] = to_string(u);
-					}
+					k3_edge[u-1][to_string(w)] = k3_edge[u-1][to_string(w)] + 1;
+					k3_edge[w-1][to_string(u)] = k3_edge[w-1][to_string(u)] + 1;
+					clock.tock("increment_k3_edge");
 					
+					clock.tick("increment_k3_compTriangle");
 					// add {v,w} to T(u)
-					completing_triangle[u-1].insert(completing_triangle[u-1].end(), v);
-					completing_triangle[u-1].insert(completing_triangle[u-1].end(), w);
+					vector<unsigned int> to_insert{v,w};
+					completing_triangle[u-1].insert(completing_triangle[u-1].end(), 
+													to_insert.begin(), 
+													to_insert.end());
 					
 					// add {u,w} to T(v)
-					completing_triangle[v-1].insert(completing_triangle[v-1].end(), u);
-					completing_triangle[v-1].insert(completing_triangle[v-1].end(), w);
+					to_insert = {u,w};
+					completing_triangle[v-1].insert(completing_triangle[v-1].end(), 
+													to_insert.begin(), 
+													to_insert.end());
 					
 					// add {u,v} to T(w)
-					completing_triangle[w-1].insert(completing_triangle[w-1].end(), u);
-					completing_triangle[w-1].insert(completing_triangle[w-1].end(), v);
+					to_insert = {u,v};
+					completing_triangle[w-1].insert(completing_triangle[w-1].end(), 
+													to_insert.begin(), 
+													to_insert.end());
+													
+					clock.tock("increment_k3_compTriangle");
 					clock.tock("increment_k3");
 					
 					clock.tick("get_neighbour");
