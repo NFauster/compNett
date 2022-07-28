@@ -29,6 +29,7 @@ struct CountOrtmann : public Worker
 	std::vector<int> k4;
 	
 	std::vector<std::vector<int> > k3_edge;
+	std::vector<std::vector<int> > completing_triangle;
    
 	// constructors
 	CountOrtmann(int n_nodes_in,
@@ -37,7 +38,8 @@ struct CountOrtmann : public Worker
 				 n_nodes(n_nodes_in),
 				 u_vec(u_vec_in),
 				 neighbourhood(neighbourhood_in),
-				 k3(), c4(), k4(), k3_edge()
+				 k3(), c4(), k4(), k3_edge(),
+				 completing_triangle()
 				 {
 					 k3.resize(n_nodes, 0);
 					 c4.resize(n_nodes, 0);
@@ -46,13 +48,16 @@ struct CountOrtmann : public Worker
 					 for(int i = 1; i <= n_nodes; i++){
 						 k3_edge.push_back(std::vector<int>((*neighbourhood + 3*(i - 1))[0].size()));
 						 //k3_edge[i - 1].names() = (*neighbourhood + 3*(i - 1))[0];
+						 
+						 completing_triangle.push_back(std::vector<int>(0));
 					 }
 				 }
 	CountOrtmann(const CountOrtmann& countOrtmann, Split): 
 		n_nodes(countOrtmann.n_nodes),
 		u_vec(countOrtmann.u_vec),
 		neighbourhood(countOrtmann.neighbourhood),
-		k3(), c4(), k4(), k3_edge()
+		k3(), c4(), k4(), k3_edge(),
+		completing_triangle()
 		{
 			k3.resize(n_nodes, 0);
 			c4.resize(n_nodes, 0);
@@ -61,6 +66,8 @@ struct CountOrtmann : public Worker
 			for(int i = 1; i <= n_nodes; i++){
 				k3_edge.push_back(std::vector<int>((*neighbourhood + 3*(i - 1))[0].size()));
 				//k3_edge[i - 1].names() = (*neighbourhood + 3*(i - 1))[0];
+				
+				completing_triangle.push_back(std::vector<int>(0));
 			}
 		}
 
@@ -141,7 +148,7 @@ struct CountOrtmann : public Worker
 															*u))] ++;
 					
 						// add {v,w} to T(u)
-						/*vector<unsigned int> to_insert{v,w};
+						vector<unsigned int> to_insert{v,w};
 						completing_triangle[*u-1].insert(completing_triangle[*u-1].end(), 
 													to_insert.begin(), 
 													to_insert.end());
@@ -156,7 +163,7 @@ struct CountOrtmann : public Worker
 						to_insert = {*u,v};
 						completing_triangle[w-1].insert(completing_triangle[w-1].end(), 
 													to_insert.begin(), 
-													to_insert.end());*/
+													to_insert.end());
 													
 					
 						// {x e N+(w): x < u}
@@ -211,6 +218,10 @@ struct CountOrtmann : public Worker
 			{
 				k3_edge[i][j] += rhs.k3_edge[i][j];
 			}
+			
+			completing_triangle[i].insert(completing_triangle[i].end(),
+											rhs.completing_triangle[i].begin(),
+											rhs.completing_triangle[i].end());
         }
 	}
 };
