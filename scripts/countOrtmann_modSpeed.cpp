@@ -27,6 +27,8 @@ struct CountOrtmann : public Worker
 	std::vector<int> k3;
 	std::vector<int> c4;
 	std::vector<int> k4;
+	
+	std::vector<std::vector<int> > k3_edge;
    
 	// constructors
 	CountOrtmann(int n_nodes_in,
@@ -35,21 +37,32 @@ struct CountOrtmann : public Worker
 				 n_nodes(n_nodes_in),
 				 u_vec(u_vec_in),
 				 neighbourhood(neighbourhood_in),
-				 k3(), c4(), k4()
+				 k3(), c4(), k4(), k3_edge()
 				 {
 					 k3.resize(n_nodes, 0);
 					 c4.resize(n_nodes, 0);
 					 k4.resize(n_nodes, 0);
+					 
+					 for(int i = 1; i <= n_nodes; i++){
+						 k3_edge.push_back(std::vector<int>((*neighbourhood + 3*(i - 1))[0].size()));
+						 //k3_edge[i - 1].names() = (*neighbourhood + 3*(i - 1))[0];
 					 }
+				 }
 	CountOrtmann(const CountOrtmann& countOrtmann, Split): 
 		n_nodes(countOrtmann.n_nodes),
 		u_vec(countOrtmann.u_vec),
 		neighbourhood(countOrtmann.neighbourhood),
-		k3(), c4(), k4(){
+		k3(), c4(), k4(), k3_edge()
+		{
 			k3.resize(n_nodes, 0);
 			c4.resize(n_nodes, 0);
 			k4.resize(n_nodes, 0);
+			
+			for(int i = 1; i <= n_nodes; i++){
+				k3_edge.push_back(std::vector<int>((*neighbourhood + 3*(i - 1))[0].size()));
+				//k3_edge[i - 1].names() = (*neighbourhood + 3*(i - 1))[0];
 			}
+		}
 
 	// process just the elements of the range I've been asked to
 	void operator()(std::size_t begin, std::size_t end) {
@@ -94,16 +107,38 @@ struct CountOrtmann : public Worker
 						k3[w-1] ++;
 					
 						// increment (u,v)
-						/*k3_edge[*u-1][to_string(v)] = k3_edge[*u-1][to_string(v)] + 1;
-						k3_edge[v-1][to_string(*u)] = k3_edge[v-1][to_string(*u)] + 1;
+						k3_edge[*u-1][distance((*neighbourhood + 3*(*u-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(*u-1))[0].begin(), 
+															(*neighbourhood + 3*(*u-1))[0].end(), 
+															v))] ++;
+						k3_edge[v-1][distance((*neighbourhood + 3*(v-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(v-1))[0].begin(), 
+															(*neighbourhood + 3*(v-1))[0].end(), 
+															*u))] ++;
 
 						// increment (w,v)
-						k3_edge[w-1][to_string(v)] = k3_edge[w-1][to_string(v)] + 1;
-						k3_edge[v-1][to_string(w)] = k3_edge[v-1][to_string(w)] + 1;
+						//k3_edge[w-1][to_string(v)] ++;
+						//k3_edge[v-1][to_string(w)] ++;
+						k3_edge[w-1][distance((*neighbourhood + 3*(w-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(w-1))[0].begin(), 
+															(*neighbourhood + 3*(w-1))[0].end(), 
+															v))] ++;
+						k3_edge[v-1][distance((*neighbourhood + 3*(v-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(v-1))[0].begin(), 
+															(*neighbourhood + 3*(v-1))[0].end(), 
+															w))] ++;
 					
 						// increment (u,w)
-						k3_edge[*u-1][to_string(w)] = k3_edge[*u-1][to_string(w)] + 1;
-						k3_edge[w-1][to_string(*u)] = k3_edge[w-1][to_string(*u)] + 1;*/
+						//k3_edge[*u-1][to_string(w)] ++;
+						//k3_edge[w-1][to_string(*u)] ++;
+						k3_edge[*u-1][distance((*neighbourhood + 3*(*u-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(*u-1))[0].begin(), 
+															(*neighbourhood + 3*(*u-1))[0].end(), 
+															w))] ++;
+						k3_edge[w-1][distance((*neighbourhood + 3*(w-1))[0].begin(),
+												lower_bound((*neighbourhood + 3*(w-1))[0].begin(), 
+															(*neighbourhood + 3*(w-1))[0].end(), 
+															*u))] ++;
 					
 						// add {v,w} to T(u)
 						/*vector<unsigned int> to_insert{v,w};
@@ -171,6 +206,11 @@ struct CountOrtmann : public Worker
 			k3[i] += rhs.k3[i];
 			c4[i] += rhs.c4[i];
 			k4[i] += rhs.k4[i];
+			
+			for(size_t j = 0; j < k3_edge[i].size(); j++)
+			{
+				k3_edge[i][j] += rhs.k3_edge[i][j];
+			}
         }
 	}
 };
