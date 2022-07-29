@@ -163,89 +163,33 @@ struct non_induced_orbits_parallel : public Worker
    }
 };
 
-IntegerVector non_induced_orbits (unsigned int crt_node, int n_nodes, unsigned int n_edges, 
-							  std::vector<int> neighbourhood[][3], IntegerVector deg,
-							  IntegerVector k3, IntegerVector c4, IntegerVector k4,
-							  std::vector<std::vector<int> > k3_edge, std::vector<std::vector<int> > completing_triangle){
-
-	IntegerVector nn(20,0);
-	//IntegerVector ni(20,0);
-	
-	IntegerVector crt_N = wrap(neighbourhood[crt_node - 1][0]);
-	IntegerVector deg_N = deg[crt_N-1];
-	
-	unsigned int dv_2 = 0;
-	for( int i = 0; i < n_nodes; i++){
-		dv_2 += chooseC(deg[i], 2);
-	}
-	
-	//add nn10
-	unsigned int temp_nn10 = 0;
-	for(unsigned int v:crt_N){
-		IntegerVector v_N = wrap(neighbourhood[v - 1][0]);
-		temp_nn10 += sum(as<IntegerVector>(deg[v_N - 1])) - deg[v - 1];
-	}
-	
-	nn[0] = chooseC(n_nodes - 1, 3);
-	nn[1] = deg[crt_node - 1];
-	nn[2] = (n_edges - deg[crt_node - 1])*(n_nodes - 3);
-	nn[3] = crt_N.length()*n_edges - sum(deg_N) - deg[crt_node - 1]*(deg[crt_node - 1] - 1);
-	nn[4] = chooseC(deg[crt_node - 1], 2);
-	nn[5] = (sum(deg_N) - deg[crt_node - 1]);
-	nn[6] = dv_2 - chooseC(deg[crt_node - 1], 2) - sum(deg_N) + deg[crt_node - 1];
-	nn[7] = k3[crt_node - 1];
-	nn[8] = sum(k3)/3 - k3[crt_node - 1];
-	nn[9] = (deg[crt_node - 1] - 1)*(sum(deg_N) - crt_N.length()) - sum(as<IntegerVector>(wrap(k3_edge[crt_node - 1])));
-	nn[10] = temp_nn10 - deg[crt_node - 1] * (deg[crt_node - 1] - 1) - 2*k3[crt_node - 1];
-	nn[11] = chooseC(deg[crt_node - 1], 3);
-	
-	for(unsigned int v: crt_N){
-		nn[12] += chooseC(deg[v - 1] - 1, 2);
-	}
-	
-	nn[13] = k3[crt_node - 1]*(deg[crt_node - 1] - 2);
-	
-	for(unsigned int i = 0; i < completing_triangle[crt_node - 1].size(); i += 2){
-		nn[14] += deg[completing_triangle[crt_node - 1][i] - 1] + 
-						deg[completing_triangle[crt_node - 1][i+1] - 1] - 4;
-	}
-	
-	nn[15] = sum(as<IntegerVector>(k3[crt_N - 1])) - sum(as<IntegerVector>(wrap(k3_edge[crt_node - 1])));
-	
-	nn[16] = -chooseC(deg[crt_node - 1], 2);
-	for(unsigned int i = 0; i < crt_N.length(); i++){
-		IntegerVector v_N = wrap(neighbourhood[crt_N[i] - 1][0]);
-		for(unsigned int j = i+1; j < crt_N.length(); j++){
-			IntegerVector w_N = wrap(neighbourhood[crt_N[j] - 1][0]);
-			nn[16] += intersect(v_N, w_N).length();
-		}
-	}
-	
-	nn[17] = -k3[crt_node - 1];
-	for(unsigned int i = 0; i < completing_triangle[crt_node - 1].size(); i += 2){
-		nn[17] += k3_edge[completing_triangle[crt_node - 1][i] - 1]
-							[distance(neighbourhood[completing_triangle[crt_node - 1][i]-1][0].begin(),
-										lower_bound(neighbourhood[completing_triangle[crt_node - 1][i]-1][0].begin(), 
-													neighbourhood[completing_triangle[crt_node - 1][i]-1][0].end(), 
-													completing_triangle[crt_node - 1][i + 1])
-									  )
-							];
-	}
-	
-	for(unsigned int t:k3_edge[crt_node - 1]){
-		nn[18] += chooseC(t,2);
-	}
-	
-	nn[19] = k4[crt_node - 1];
-	
-	
-	return nn;
-}
-
-IntegerVector compute_induced_orbits(IntegerVector nn){
-	arma::vec nn_arma = as<arma::vec>(wrap(nn));
-	
-	arma::mat LEM = {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+struct compute_induced_orbits_parallel : public Worker
+{
+	// source matrix
+	const RMatrix<int> nn;   
+	const RVector<int> u_vec;
+   
+	// destination matrix
+	RMatrix<int> ni;
+   
+	// initialize with source and destination
+	compute_induced_orbits_parallel(const IntegerMatrix nn,
+									IntegerMatrix ni,
+									const IntegerVector u_vec):
+			nn(nn), ni(ni), u_vec(u_vec)
+			{}
+   
+	// take the square root of the range of elements requested
+	void operator()(std::size_t begin, std::size_t end) {
+		for(auto u = u_vec.begin() + begin; u != u_vec.begin() + end; ++u){
+			
+			RMatrix<int>::Row row1 = nn.row(*u - 1);
+			arma::vec nn_arma(row1.length());
+			for(int i=0; i < row1.length(); i++){
+				nn_arma(i) = row1[i];
+			}
+			
+			arma::mat LEM = {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 					 {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					 {0, 0, 1, 1, 0, 1, 2, 1, 3, 1, 2, 0, 2, 1, 2, 3, 2, 3, 2, 3},
 					 {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 2, 2, 2, 3},
@@ -266,13 +210,17 @@ IntegerVector compute_induced_orbits(IntegerVector nn){
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3},
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
 					 
-	arma::vec ni_arma = solve(LEM, nn_arma);
-	arma::uvec index_for_orbits = {1, 5, 4, 7, 10, 9, 12, 11, 16, 15, 14, 13, 17, 18, 19};
-	ni_arma = ni_arma.elem(index_for_orbits);
-	
-	Rcpp::IntegerVector ni   = as<IntegerVector>(wrap(ni_arma));
-	return ni;
-}
+			arma::vec ni_arma = solve(LEM, nn_arma);
+			arma::uvec index_for_orbits = {1, 5, 4, 7, 10, 9, 12, 11, 16, 15, 14, 13, 17, 18, 19};
+			//ni_arma = ni_arma.elem(index_for_orbits);
+			
+			for(int i=0; i < ni.ncol(); i++){
+				ni(*u - 1, i) = ni_arma[index_for_orbits[i]];
+			}
+		}
+   }
+};
+
 
 struct CountOrtmann : public Worker
 {
@@ -533,6 +481,7 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
    
    // solve system of equations
 	IntegerMatrix nn (n_nodes, 20);
+	IntegerMatrix ni (n_nodes, 15);
 	
 	non_induced_orbits_parallel non_induced_orbits_parallel(u_vec,
 								n_nodes, n_edges,
@@ -544,26 +493,18 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 								countOrtmann.k3_edge,
 								countOrtmann.completing_triangle,
 								nn);
-	
 	parallelFor(0, u_vec.length(), non_induced_orbits_parallel);
 	
-	/*IntegerMatrix all_induced_counts (n_nodes, 15);
+	compute_induced_orbits_parallel compute_induced_orbits_parallel(nn,ni, u_vec);
+	parallelFor(0, u_vec.length(), compute_induced_orbits_parallel);
 	
-	for(unsigned int t = 1; t <= n_nodes; t++){
-		all_non_induced_counts(t-1, _) = non_induced_orbits(t, n_nodes, n_edges, 
-							  neighbourhood, deg,
-							  wrap(countOrtmann.k3), wrap(countOrtmann.c4), wrap(countOrtmann.k4), countOrtmann.k3_edge, countOrtmann.completing_triangle);
-							  
-		all_induced_counts(t-1, _) = compute_induced_orbits(all_non_induced_counts(t-1, _));
-	}
-	
-	colnames(all_induced_counts) = CharacterVector::create("o0", "o1", "o2", "o3", "o4", "o5",
+	colnames(ni) = CharacterVector::create("o0", "o1", "o2", "o3", "o4", "o5",
 															   "o6", "o7", "o8", "o9", "o10", "o11",
-															   "o12", "o13", "o14");*/
+															   "o12", "o13", "o14");
    
    clock.tock("total_compute");
    clock.stop("profile_parallel");
 
    // return the computed product
-   return nn;
+   return ni;
 }
