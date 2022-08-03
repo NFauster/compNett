@@ -1,10 +1,8 @@
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
-#include <RcppClock.h>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppParallel)]]
-//[[Rcpp::depends(RcppClock)]]
 
 using namespace Rcpp;
 using namespace arma;
@@ -18,6 +16,115 @@ double chooseC(double n, double k) {
   return Rf_choose(n, k);
 }
 
+std::unordered_map<int, int> arrange_names(std::unordered_map<int, int>& M)
+{
+  
+    // Declare a multimap
+    std::multimap<int, int> MM;
+  
+    // Insert every (key-value) pairs from
+    // map M to multimap MM as (value-key)
+    // pairs
+    for (auto& it : M) {
+        MM.insert({ it.second, it.first });
+    }
+	int i = 1;
+	for(auto& it : MM){
+		M[it.second] = i;
+		i++;
+	}
+  
+    return M;
+}
+
+// [[Rcpp::export]]
+std::unordered_map<int, int> degree_rcpp(IntegerMatrix edge_list){
+	//IntegerMatrix edge_list_orig = edge_list;
+	//std::sort(edge_list.begin(), edge_list.end());
+	
+	/*int n_unique = std::distance(edge_list.begin(), 
+					  std::unique(edge_list.begin(), edge_list.end()));*/
+					  
+	std::unordered_map<int, int> count;
+	std::unordered_map<int, int> count_self;
+	int n_edges = edge_list.nrow();
+	
+	for(int i = 0; i < n_edges; i++){
+		if(*(edge_list.begin() + i) != *(edge_list.begin() + n_edges + i)){
+			count[*(edge_list.begin() + i)] ++;
+			count[*(edge_list.begin() + n_edges + i)] ++;
+		}
+		else{
+			count_self[*(edge_list.begin() + i)] ++;
+		}
+		
+	}
+	
+	return count; //TODO:export count_self
+}
+
+
+
+void edge_list_rename_rcpp(IntegerMatrix edge_list, int& n_edges,
+							std::vector<int> (*neighbourhood)[3],
+							std::vector<int>& deg){
+	n_edges = edge_list.nrow();
+	
+	// rename and redirect
+	std::unordered_map<int, int> name_correspondance = degree_rcpp(edge_list);
+	arrange_names(name_correspondance);
+	
+	std::vector<int> rename_redirect(n_edges * 2);
+	
+	for(int i = 0; i < n_edges; i++){
+		if(name_correspondance[edge_list(i,0)] <= name_correspondance[edge_list(i,1)]){
+			rename_redirect[2 * i + 0] = name_correspondance[edge_list(i,0)];
+			rename_redirect[2 * i + 1] = name_correspondance[edge_list(i,1)];
+		}
+		else{
+			rename_redirect[2 * i + 0] = name_correspondance[edge_list(i,1)];
+			rename_redirect[2 * i + 1] = name_correspondance[edge_list(i,0)];
+		}
+		
+		/*if(rename_redirect[2 * i + 0] == 0){
+			rename_redirect[2 * i + 0] = R_NaN;
+		}
+		if(rename_redirect[2 * i + 1] == 0){
+			rename_redirect[2 * i + 1] = R_NaN;
+		}*/
+	}
+	
+	
+	// list neighbourhood
+	int n_nodes = name_correspondance.size();
+
+	//std::vector<int> neighbourhood[n_nodes][3];
+		
+	for(auto edge = rename_redirect.begin(); edge < rename_redirect.end(); edge += 2){
+		if(*edge != *(edge + 1)){
+				neighbourhood[(*edge - 1)][0].push_back(*(edge + 1));
+				neighbourhood[(*edge - 1)][2].push_back(*(edge + 1));
+				
+				neighbourhood[*(edge + 1) - 1][0].push_back(*edge);
+				neighbourhood[*(edge + 1) - 1][1].push_back(*edge);
+			}
+	}
+	
+	// sort neighbourhood
+	for(int i = 0; i < n_nodes; i++){
+		for(int j = 0; j < 3; j++){
+			sort(neighbourhood[i][j].begin(), neighbourhood[i][j].end());
+		}
+	}
+	
+	
+	// get degrees from neighbourhood
+	//std::vector<int> deg(n_nodes);
+	
+	for(int i = 0; i < n_nodes; i++){
+		deg[i] = neighbourhood[i][0].size();
+	}
+}
 
 struct non_induced_orbits_parallel : public Worker
 {
@@ -26,7 +133,7 @@ struct non_induced_orbits_parallel : public Worker
 	const int n_nodes;
 	const int n_edges;
 	const std::vector<int> (*neighbourhood)[3];
-	const RVector<int> deg;
+	const std::vector<int> deg;
 	const std::vector<int> k3;
 	const std::vector<int> c4;
 	const std::vector<int> k4;
@@ -42,7 +149,7 @@ struct non_induced_orbits_parallel : public Worker
 								const int n_nodes, 
 								const int n_edges,
 								const std::vector<int> (*neighbourhood)[3],
-								const IntegerVector deg,
+								const std::vector<int> deg,
 								const std::vector<int> k3,
 								const std::vector<int> c4,
 								const std::vector<int> k4,
@@ -419,50 +526,31 @@ struct CountOrtmann : public Worker
 
 // [[Rcpp::export]]
 IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
-		Rcpp::Clock clock;
+		//Rcpp::Clock clock;
 	int n_nodes = max(edge_list);
+	
+	int n_edges;
+	std::vector<int> neighbourhood[n_nodes][3];
+	std::vector<int> deg(n_nodes);
+	
+	
+	edge_list_rename_rcpp(edge_list, n_edges, neighbourhood, deg);
+	
+	
 	IntegerVector u_vec = seq(1, n_nodes);
 	
-	//call R function
-	Function list_neighbourhood("list_neighbourhood");
-	
-	
-	// Compute neighbourhoods
-	List neighbourhood_list = list_neighbourhood(edge_list, Named("directed") = true); //TODO in Rcpp
-	std::vector<int> neighbourhood[n_nodes][3];
-	
-	for(int i = 0; i < n_nodes; i++){
-		for(int j = 0; j < as<IntegerVector>(as<List>(neighbourhood_list["total_neighbourhood"])[i]).length(); j++)
-		{
-			neighbourhood[i][0].push_back(as<IntegerVector>(as<List>(neighbourhood_list["total_neighbourhood"])[i])[j]);
-		}
-		
-		for(int j = 0; j < as<IntegerVector>(as<List>(neighbourhood_list["in_neighbourhood"])[i]).length(); j++)
-		{
-			neighbourhood[i][1].push_back(as<IntegerVector>(as<List>(neighbourhood_list["in_neighbourhood"])[i])[j]);
-		}
-		
-		for(int j = 0; j < as<IntegerVector>(as<List>(neighbourhood_list["out_neighbourhood"])[i]).length(); j++)
-		{
-			neighbourhood[i][2].push_back(as<IntegerVector>(as<List>(neighbourhood_list["out_neighbourhood"])[i])[j]);
-		}
-	}
-	
-	clock.tick("total_count");
+	//clock.tick("total_count");
    // declare the InnerProduct instance that takes a pointer to the vector data
    CountOrtmann countOrtmann(n_nodes, u_vec, neighbourhood);
 
    // call paralleReduce to start the work
    parallelReduce(1, u_vec.length(), countOrtmann);
    
-   clock.tock("total_count");
+   //clock.tock("total_count");
    
    
-   clock.tick("total_compute");
+   //clock.tick("total_compute");
    // ######
-   	int n_edges = edge_list.nrow();
-   Function degree("degree");
-   IntegerVector deg = degree(edge_list, Named("directed") = false);
    
    // solve system of equations
 	std::vector<int> nn(n_nodes * 20);
@@ -480,13 +568,6 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 								nn);
 	parallelFor(0, u_vec.length(), non_induced_orbits_parallel);
 	
-	for(int u:u_vec){
-		for (int i=0;i<20;i++){
-			Rprintf("%i ", nn[u*20+i]);
-		}
-		printf("\n");
-	}
-	
 	compute_induced_orbits_parallel compute_induced_orbits_parallel(nn,ni, u_vec);
 	parallelFor(0, u_vec.length(), compute_induced_orbits_parallel);
 	
@@ -494,8 +575,8 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 															   "o6", "o7", "o8", "o9", "o10", "o11",
 															   "o12", "o13", "o14");
    
-   clock.tock("total_compute");
-   clock.stop("profile_parallel");
+   //clock.tock("total_compute");
+   //clock.stop("profile_parallel");
 
    // return the computed product
    return ni;
