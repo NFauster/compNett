@@ -1,8 +1,10 @@
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
+#include <RcppClock.h>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppParallel)]]
+// [[Rcpp::depends(RcppClock)]]
 
 using namespace Rcpp;
 using namespace arma;
@@ -227,20 +229,8 @@ struct non_induced_orbits_parallel : public Worker
 			for(int n:crt_N){
 				nn[(*u - 1) * 20 + 15] += k3[n - 1];
 			}
-	
-			nn[(*u - 1) * 20 + 16] = -chooseC(deg[*u - 1], 2);
-			for(int i = 0; i < crt_N.size(); i++){
-				std::vector<int> v_N = neighbourhood[crt_N[i] - 1][0];
-				
-				for(int j = i+1; j < crt_N.size(); j++){
-					std::vector<int> w_N = neighbourhood[crt_N[j] - 1][0];
-					std::vector<int> intersection;
-					std::set_intersection(v_N.begin(),v_N.end(),
-															w_N.begin(), w_N.end(),
-															std::back_inserter(intersection));
-					nn[(*u - 1) * 20 + 16] += intersection.size();
-				}
-			}
+			
+			nn[(*u - 1) * 20 + 16] = c4[*u - 1];
 	
 			nn[(*u - 1) * 20 + 17] = -k3[*u - 1];
 			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
@@ -526,7 +516,10 @@ struct CountOrtmann : public Worker
 
 // [[Rcpp::export]]
 IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
-		//Rcpp::Clock clock;
+	Rcpp::Clock clock;
+	
+	clock.tick("total_time");
+	clock.tick("pre_proc");
 	int n_nodes = max(edge_list);
 	
 	int n_edges;
@@ -535,21 +528,22 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	
 	
 	edge_list_rename_rcpp(edge_list, n_edges, neighbourhood, deg);
+	clock.tock("pre_proc");
 	
-	
+	clock.tick("counting_graphlet");
 	IntegerVector u_vec = seq(1, n_nodes);
 	
-	//clock.tick("total_count");
+	clock.tick("total_count");
    // declare the InnerProduct instance that takes a pointer to the vector data
    CountOrtmann countOrtmann(n_nodes, u_vec, neighbourhood);
 
    // call paralleReduce to start the work
    parallelReduce(1, u_vec.length(), countOrtmann);
    
-   //clock.tock("total_count");
+   clock.tock("counting_graphlet");
    
    
-   //clock.tick("total_compute");
+   clock.tick("compute_nn");
    // ######
    
    // solve system of equations
@@ -567,16 +561,18 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 								countOrtmann.completing_triangle,
 								nn);
 	parallelFor(0, u_vec.length(), non_induced_orbits_parallel);
+	clock.tock("compute_nn");
 	
+	clock.tick("compute_ni");
 	compute_induced_orbits_parallel compute_induced_orbits_parallel(nn,ni, u_vec);
 	parallelFor(0, u_vec.length(), compute_induced_orbits_parallel);
 	
 	colnames(ni) = CharacterVector::create("o0", "o1", "o2", "o3", "o4", "o5",
 															   "o6", "o7", "o8", "o9", "o10", "o11",
 															   "o12", "o13", "o14");
-   
-   //clock.tock("total_compute");
-   //clock.stop("profile_parallel");
+   clock.tock("compute_ni");
+   clock.tock("total_time");
+   clock.stop("profile_parallel");
 
    // return the computed product
    return ni;
