@@ -11,11 +11,67 @@ using namespace arma;
 using namespace RcppParallel;
 using namespace std;
 
+// Recursive function to return
+// gcd of a and b
+// as proposed by https://www.geeksforgeeks.org/cpp-program-for-program-to-find-lcm-of-two-numbers/
+long long gcd(long long int a,
+              long long int b)
+{
+  if (b == 0)
+    return a;
+  return gcd(b, a % b);
+}
+ 
+// Function to return LCM of
+// two numbers
+// as proposed by https://www.geeksforgeeks.org/cpp-program-for-program-to-find-lcm-of-two-numbers/
+long long lcm(int a, int b)
+{
+    return (a / gcd(a, b)) * b;
+}
 
 double chooseC(double n, double k) {
 	// as proposed by Dirk Eddelbuettel 
 	// https://stackoverflow.com/questions/25005216/n-choose-k-function-crashes-rcpp
   return Rf_choose(n, k);
+}
+
+double spearman(IntegerVector x, IntegerVector y){
+    
+    Function spearman("spearman"); 
+	NumericVector result = spearman(x, y);
+	
+	LogicalVector check_NA = is_na(result);
+	
+    if(check_NA[0] == TRUE){
+		return 0.0;
+	}
+	
+	return result[0];
+}
+
+double sd(NumericVector x){
+    
+    Function sd("sd"); 
+	NumericVector result = sd(x);
+	
+	return result[0];
+}
+
+double spearman2(IntegerVector x, IntegerVector y){
+    
+    Function spearman("spearman"); 
+	x.push_back(1);
+	y.push_back(1);
+	NumericVector result = spearman(x, y);
+	
+	LogicalVector check_NA = is_na(result);
+	
+    if(check_NA[0] == TRUE){
+		return 0.0;
+	}
+	
+	return result[0];
 }
 
 std::unordered_map<int, int> arrange_names(std::unordered_map<int, int>& M)
@@ -102,6 +158,7 @@ void edge_list_rename_rcpp(IntegerMatrix edge_list, int& n_edges,
 
 	//std::vector<int> neighbourhood[n_nodes][3];
 		
+	//This can be done with the previous loop.
 	for(auto edge = rename_redirect.begin(); edge < rename_redirect.end(); edge += 2){
 		if(*edge != *(edge + 1)){
 				neighbourhood[(*edge - 1)][0].push_back(*(edge + 1));
@@ -122,7 +179,8 @@ void edge_list_rename_rcpp(IntegerMatrix edge_list, int& n_edges,
 	
 	// get degrees from neighbourhood
 	//std::vector<int> deg(n_nodes);
-	
+	// this also can be done in the loop through rename_direct
+	deg.resize(n_nodes);
 	for(int i = 0; i < n_nodes; i++){
 		deg[i] = neighbourhood[i][0].size();
 	}
@@ -400,7 +458,7 @@ struct CountOrtmann : public Worker
 				for(int w: v_N_out_sel){
 					mark[w-1] -= 2;
 				
-					if(mark[w-1] !=0){;
+					if(mark[w-1] !=0){
 						k3[*u-1] ++;
 						k3[v-1] ++;
 						k3[w-1] ++;
@@ -526,15 +584,15 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	std::vector<int> neighbourhood[n_nodes][3];
 	std::vector<int> deg(n_nodes);
 	
-	
 	edge_list_rename_rcpp(edge_list, n_edges, neighbourhood, deg);
+	n_nodes = deg.size();
 	clock.tock("pre_proc");
 	
 	clock.tick("counting_graphlet");
 	IntegerVector u_vec = seq(1, n_nodes);
 	
 	clock.tick("total_count");
-   // declare the InnerProduct instance that takes a pointer to the vector data
+   
    CountOrtmann countOrtmann(n_nodes, u_vec, neighbourhood);
 
    // call paralleReduce to start the work
@@ -563,6 +621,11 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	parallelFor(0, u_vec.length(), non_induced_orbits_parallel);
 	clock.tock("compute_nn");
 	
+	for(int i = 0; i <100; i++){
+		Rprintf("%i\n", nn[i]);
+		if(i%5 == 4) Rprintf("\n");
+	}
+	
 	clock.tick("compute_ni");
 	compute_induced_orbits_parallel compute_induced_orbits_parallel(nn,ni, u_vec);
 	parallelFor(0, u_vec.length(), compute_induced_orbits_parallel);
@@ -577,3 +640,249 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
    // return the computed product
    return ni;
 }
+
+
+
+// [[Rcpp::export]]
+NumericMatrix GCM(IntegerMatrix edge_list){
+	IntegerMatrix ni = parallelCountOrtmann(edge_list);
+	
+	unsigned int n_orbits = ni.ncol();
+	
+	NumericMatrix GCM = NumericMatrix::diag(n_orbits, 1.0);
+	
+	for(unsigned int i = 0; i < n_orbits - 1; i++){
+		for(unsigned int j = i + 1; j < n_orbits; j++){
+			GCM(i, j) =  spearman(ni(_, i), ni(_, j));
+			GCM(j, i) =  spearman(ni(_, i), ni(_, j));
+		}
+	}
+	
+	return GCM;
+}
+
+// [[Rcpp::export]]
+NumericMatrix GCM_wo(IntegerMatrix ni){
+	unsigned int n_orbits = ni.ncol();
+	
+	NumericMatrix GCM = NumericMatrix::diag(n_orbits, 1.0);
+	
+	for(unsigned int i = 0; i < n_orbits - 1; i++){
+		for(unsigned int j = i + 1; j < n_orbits; j++){
+			GCM(i, j) =  spearman(ni(_, i), ni(_, j));
+			GCM(j, i) =  spearman(ni(_, i), ni(_, j));
+		}
+	}
+	
+	return GCM;
+}
+
+// [[Rcpp::export]]
+NumericMatrix GCM_wo2(IntegerMatrix ni){
+	unsigned int n_orbits = ni.ncol();
+	
+	NumericMatrix GCM = NumericMatrix::diag(n_orbits, 1.0);
+	
+	for(unsigned int i = 0; i < n_orbits - 1; i++){
+		for(unsigned int j = i + 1; j < n_orbits; j++){
+			GCM(i, j) =  spearman2(ni(_, i), ni(_, j));
+			GCM(j, i) =  spearman2(ni(_, i), ni(_, j));
+		}
+	}
+	
+	return GCM;
+}
+
+// [[Rcpp::export]]
+double GCD(NumericMatrix X, NumericMatrix Y){
+	unsigned int n_orbits = X.ncol();
+	
+	double GCD;
+	
+	for(unsigned int i = 0; i < n_orbits - 1; i++){
+		for(unsigned int j = i + 1; j < n_orbits; j++){
+			GCD += pow((X(i, j) - Y(i, j)), 2);
+		}
+	}
+	
+	return sqrt(GCD);
+}
+
+// [[Rcpp::export]]
+NumericMatrix GDD(IntegerMatrix edge_list){
+	IntegerMatrix ni = parallelCountOrtmann(edge_list);
+	
+	unsigned int n_orbits = ni.ncol();
+	unsigned int n_nodes = ni.nrow();
+	int k_max = max(ni);
+	
+	NumericMatrix GDD = NumericMatrix(k_max + 1, n_orbits);
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int n = 0; n < n_nodes; n++){
+			GDD(ni(n, orbit), orbit) += 1.0/n_nodes;
+		}
+		
+		GDD(_, orbit) = GDD(_, orbit) / sd(GDD(_, orbit));
+	}
+	
+	return GDD;
+}
+
+// [[Rcpp::export]]
+NumericMatrix GDD_wo(IntegerMatrix ni){
+	
+	unsigned int n_orbits = ni.ncol();
+	unsigned int n_nodes = ni.nrow();
+	int k_max = max(ni);
+	
+	NumericMatrix GDD = NumericMatrix(k_max + 1, n_orbits);
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int n = 0; n < n_nodes; n++){
+			GDD(ni(n, orbit), orbit) += 1.0/n_nodes;
+		}
+		
+		GDD(_, orbit) = GDD(_, orbit) / sd(GDD(_, orbit));
+	}
+	
+	
+	return GDD;
+}
+
+
+// [[Rcpp::export]]
+NumericMatrix CGDD(IntegerMatrix edge_list){
+	NumericMatrix gdd = GDD(edge_list);
+	
+	unsigned int n_orbits = gdd.ncol();
+	int ks = gdd.nrow();
+	
+	NumericMatrix cgdd_temp = gdd;
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int k = 1; k < ks; k++){
+			cgdd_temp(k, orbit) += cgdd_temp(k - 1, orbit);
+		}
+	}
+	
+	int sample_freq = floor(gdd.nrow()/4000) + 1;
+	int new_nrow = floor(gdd.nrow()/sample_freq) + 1;
+	
+	NumericMatrix CGDD(new_nrow , gdd.ncol());
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int k = 0; k < new_nrow - 1; k++){
+			CGDD(k, orbit) = cgdd_temp(sample_freq * k, orbit);
+		}
+		CGDD(new_nrow - 1, orbit) = sample_freq;
+	}
+	
+	return CGDD;
+}
+
+// [[Rcpp::export]]
+NumericMatrix CGDD_wo(IntegerMatrix ni){
+	NumericMatrix gdd = GDD_wo(ni);
+	
+	unsigned int n_orbits = gdd.ncol();
+	int ks = gdd.nrow();
+	
+	NumericMatrix cgdd_temp = gdd;
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int k = 1; k < ks; k++){
+			cgdd_temp(k, orbit) += cgdd_temp(k - 1, orbit);
+		}
+	}
+	
+	int sample_freq = floor(gdd.nrow()/4000) + 1;
+	int new_nrow = floor(gdd.nrow()/sample_freq) + 1;
+	
+	NumericMatrix CGDD(new_nrow , gdd.ncol());
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		for(unsigned int k = 0; k < new_nrow - 1; k++){
+			CGDD(k, orbit) = cgdd_temp(sample_freq * k, orbit);
+		}
+		CGDD(new_nrow - 1, orbit) = sample_freq;
+	}
+	
+	return CGDD;
+}
+// [[Rcpp::export]]
+double emd_star(NumericVector X, NumericVector Y){
+	NumericVector* shorter;
+	NumericVector* longer;
+	
+	int l_short = std::min(X.length(), Y.length()) - 1;
+	int l_long = std::max(X.length(), Y.length()) - 1;
+	
+	//int sample_freq_X = X[X.length() - 1];
+	//int sample_freq_Y = Y[Y.length() - 1];
+	
+	if(X.length() < Y.length()){
+		shorter = &X;
+		longer = &Y;
+	} else{
+		shorter = &Y;
+		longer = &X;
+	}
+	
+	int sample_freq_shorter = (*shorter)[l_short];
+	int sample_freq_longer = (*longer)[l_long];
+	
+	int sample_factor_shorter = lcm(sample_freq_shorter, sample_freq_longer)/sample_freq_shorter;
+	int sample_factor_longer = lcm(sample_freq_shorter, sample_freq_longer)/sample_freq_longer;
+	
+	l_short = floor(l_short / sample_factor_shorter);
+	l_long = floor(l_long / sample_factor_longer);
+	
+	
+	double emd = l_long + l_short;
+	double prop_emd = emd;
+	int c = - l_short + 1;
+	
+	while(prop_emd <= emd){
+		emd = prop_emd;
+		prop_emd = 0;
+		// sum shorter vector standing out left
+		for(int i = 0; i < -c; i++){
+			prop_emd += (*shorter)[i * sample_factor_shorter];
+		}
+		// sum both vectors when overlapping
+		for(int i = std::max(0, -c); i < std::min(l_long-c, l_short); i++){
+			prop_emd += abs((*shorter)[i * sample_factor_shorter]-
+							(*longer)[i * sample_factor_longer+c]);
+		}
+		// sum longer vector not covered by shorter vector from left
+		for(int i = 0; i < c; i++){
+			prop_emd += (*longer)[i * sample_factor_longer];
+		}
+		// sum longer vector not covered by shorter vector from right
+		for(int i = l_long-1; i > l_short+c - 1; i--){
+			prop_emd += 1-(*longer)[i * sample_factor_longer];
+		}
+		
+		// sum shorter vector standing out right
+		for(int i = l_short-1; i > l_long-c - 1; i--){
+			prop_emd += 1-(*shorter)[i * sample_factor_shorter];
+		}
+		
+		c ++;
+	}
+	return emd;
+}
+
+// [[Rcpp::export]]
+double NetEmd(NumericMatrix X, NumericMatrix Y){
+	unsigned int n_orbits = X.ncol();
+	double netemd = 0;
+	
+	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
+		netemd =+ emd_star(X(_, orbit), Y(_, orbit));
+	}
+	
+	return netemd/n_orbits;
+}
+
