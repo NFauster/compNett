@@ -252,37 +252,35 @@ struct non_induced_orbits_parallel : public Worker
 			}
 	
 			nn[(*u - 1) * 15 + 0] = deg[*u - 1];
-			nn[(*u - 1) * 15 + 2] = chooseC(deg[*u - 1], 2);
 			nn[(*u - 1) * 15 + 1] = (deg_N_sum - deg[*u - 1]);
+			nn[(*u - 1) * 15 + 2] = chooseC(deg[*u - 1], 2);
 			nn[(*u - 1) * 15 + 3] = k3[*u - 1];
+			nn[(*u - 1) * 15 + 4] = temp_nn4 - deg[*u - 1] * (deg[*u - 1] - 1) - 2*k3[*u - 1];
 			
 			nn[(*u - 1) * 15 + 5] = (deg[*u - 1] - 1)*(deg_N_sum - crt_N.size()) - 
 									accumulate(k3_edge[*u - 1].begin(),
 											   k3_edge[*u - 1].end(), 0);
-
-
-			nn[(*u - 1) * 15 + 4] = temp_nn4 - deg[*u - 1] * (deg[*u - 1] - 1) - 2*k3[*u - 1];
-			nn[(*u - 1) * 15 + 7] = chooseC(deg[*u - 1], 3);
 			
 			nn[(*u - 1) * 15 + 6] = 0;
 			for(int v: crt_N){
 				nn[(*u - 1) * 15 + 6] += chooseC(deg[v - 1] - 1, 2);
 			}
-	
-			nn[(*u - 1) * 15 + 11] = k3[*u - 1]*(deg[*u - 1] - 2);
-	
-			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
-				nn[(*u - 1) * 15 + 10] += deg[completing_triangle[*u - 1][i] - 1] + 
-						deg[completing_triangle[*u - 1][i+1] - 1] - 4;
-			}
-	
+
+			nn[(*u - 1) * 15 + 7] = chooseC(deg[*u - 1], 3);
+			nn[(*u - 1) * 15 + 8] = c4[*u - 1];
+			
 			nn[(*u - 1) * 15 + 9] = - accumulate(k3_edge[*u - 1].begin(),
 										  k3_edge[*u - 1].end(), 0);
 			for(int n:crt_N){
 				nn[(*u - 1) * 15 + 9] += k3[n - 1];
 			}
+	
+			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
+				nn[(*u - 1) * 15 + 10] += deg[completing_triangle[*u - 1][i] - 1] + 
+						deg[completing_triangle[*u - 1][i+1] - 1] - 4;
+			}
 			
-			nn[(*u - 1) * 15 + 8] = c4[*u - 1];
+			nn[(*u - 1) * 15 + 11] = k3[*u - 1]*(deg[*u - 1] - 2);
 	
 			nn[(*u - 1) * 15 + 12] = -k3[*u - 1];
 			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
