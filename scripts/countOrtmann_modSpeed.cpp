@@ -50,14 +50,6 @@ double spearman(IntegerVector x, IntegerVector y){
 	return result[0];
 }
 
-double sd(NumericVector x){
-    
-    Function sd("sd"); 
-	NumericVector result = sd(x);
-	
-	return result[0];
-}
-
 double spearman2(IntegerVector x, IntegerVector y){
     
     Function spearman("spearman"); 
@@ -70,6 +62,14 @@ double spearman2(IntegerVector x, IntegerVector y){
     if(check_NA[0] == TRUE){
 		return 0.0;
 	}
+	
+	return result[0];
+}
+
+double sd(NumericVector x){
+    
+    Function sd("sd"); 
+	NumericVector result = sd(x);
 	
 	return result[0];
 }
@@ -241,58 +241,52 @@ struct non_induced_orbits_parallel : public Worker
 			}
 	
 			//add nn10
-			int temp_nn10 = 0;
+			int temp_nn4 = 0;
 			for(int v:crt_N){
 				std::vector<int> v_N = neighbourhood[v - 1][0];
 				
 				for(int n:v_N){
-					temp_nn10 += deg[n - 1];
+					temp_nn4 += deg[n - 1];
 				}
-				temp_nn10 -= deg[v - 1];
+				temp_nn4 -= deg[v - 1];
 			}
 	
-			//nn[(*u - 1) * 20 + 0] = chooseC(n_nodes - 1, 3);
-			nn[(*u - 1) * 20 + 1] = deg[*u - 1];
-			//nn[(*u - 1) * 20 + 2] = (n_edges - deg[*u - 1])*(n_nodes - 3);
-			//nn[(*u - 1) * 20 + 3] = crt_N.size()*n_edges - deg_N_sum - deg[*u - 1]*(deg[*u - 1] - 1);
-			nn[(*u - 1) * 20 + 4] = chooseC(deg[*u - 1], 2);
-			nn[(*u - 1) * 20 + 5] = (deg_N_sum - deg[*u - 1]);
-			//nn[(*u - 1) * 20 + 6] = dv_2 - chooseC(deg[*u - 1], 2) - deg_N_sum + deg[*u - 1];
-			nn[(*u - 1) * 20 + 7] = k3[*u - 1];
+			nn[(*u - 1) * 15 + 0] = deg[*u - 1];
+			nn[(*u - 1) * 15 + 2] = chooseC(deg[*u - 1], 2);
+			nn[(*u - 1) * 15 + 1] = (deg_N_sum - deg[*u - 1]);
+			nn[(*u - 1) * 15 + 3] = k3[*u - 1];
 			
-			//nn[(*u - 1) * 20 + 8] = accumulate(k3.begin(), k3.end(), 0)/3 - k3[*u - 1];
-			
-			nn[(*u - 1) * 20 + 9] = (deg[*u - 1] - 1)*(deg_N_sum - crt_N.size()) - 
+			nn[(*u - 1) * 15 + 5] = (deg[*u - 1] - 1)*(deg_N_sum - crt_N.size()) - 
 									accumulate(k3_edge[*u - 1].begin(),
 											   k3_edge[*u - 1].end(), 0);
 
 
-			nn[(*u - 1) * 20 + 10] = temp_nn10 - deg[*u - 1] * (deg[*u - 1] - 1) - 2*k3[*u - 1];
-			nn[(*u - 1) * 20 + 11] = chooseC(deg[*u - 1], 3);
+			nn[(*u - 1) * 15 + 4] = temp_nn4 - deg[*u - 1] * (deg[*u - 1] - 1) - 2*k3[*u - 1];
+			nn[(*u - 1) * 15 + 7] = chooseC(deg[*u - 1], 3);
 			
-			nn[(*u - 1) * 20 + 12] = 0;
+			nn[(*u - 1) * 15 + 6] = 0;
 			for(int v: crt_N){
-				nn[(*u - 1) * 20 + 12] += chooseC(deg[v - 1] - 1, 2);
+				nn[(*u - 1) * 15 + 6] += chooseC(deg[v - 1] - 1, 2);
 			}
 	
-			nn[(*u - 1) * 20 + 13] = k3[*u - 1]*(deg[*u - 1] - 2);
+			nn[(*u - 1) * 15 + 11] = k3[*u - 1]*(deg[*u - 1] - 2);
 	
 			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
-				nn[(*u - 1) * 20 + 14] += deg[completing_triangle[*u - 1][i] - 1] + 
+				nn[(*u - 1) * 15 + 10] += deg[completing_triangle[*u - 1][i] - 1] + 
 						deg[completing_triangle[*u - 1][i+1] - 1] - 4;
 			}
 	
-			nn[(*u - 1) * 20 + 15] = - accumulate(k3_edge[*u - 1].begin(),
+			nn[(*u - 1) * 15 + 9] = - accumulate(k3_edge[*u - 1].begin(),
 										  k3_edge[*u - 1].end(), 0);
 			for(int n:crt_N){
-				nn[(*u - 1) * 20 + 15] += k3[n - 1];
+				nn[(*u - 1) * 15 + 9] += k3[n - 1];
 			}
 			
-			nn[(*u - 1) * 20 + 16] = c4[*u - 1];
+			nn[(*u - 1) * 15 + 8] = c4[*u - 1];
 	
-			nn[(*u - 1) * 20 + 17] = -k3[*u - 1];
+			nn[(*u - 1) * 15 + 12] = -k3[*u - 1];
 			for(int i = 0; i < completing_triangle[*u - 1].size(); i += 2){
-				nn[(*u - 1) * 20 + 17] += k3_edge[completing_triangle[*u - 1][i] - 1]
+				nn[(*u - 1) * 15 + 12] += k3_edge[completing_triangle[*u - 1][i] - 1]
 									[distance(neighbourhood[completing_triangle[*u - 1][i]-1][0].begin(),
 												lower_bound(neighbourhood[completing_triangle[*u - 1][i]-1][0].begin(), 
 															neighbourhood[completing_triangle[*u - 1][i]-1][0].end(), 
@@ -302,10 +296,10 @@ struct non_induced_orbits_parallel : public Worker
 			}
 	
 			for(int t:k3_edge[*u - 1]){
-				nn[(*u - 1) * 20 + 18] += chooseC(t,2);
+				nn[(*u - 1) * 15 + 13] += chooseC(t,2);
 			}
 	
-			nn[(*u - 1) * 20 + 19] = k4[*u - 1];
+			nn[(*u - 1) * 15 + 14] = k4[*u - 1];
 		}
    }
 };
@@ -331,34 +325,31 @@ struct compute_induced_orbits_parallel : public Worker
 		for(auto u = u_vec.begin() + begin; u != u_vec.begin() + end; ++u){
 			
 			arma::vec nn_arma(15);
-			std::vector<int> index = {1,4,5,7,9,10,11,12,13,14,15,16,17,18,19};
 			for(int i=0; i < nn_arma.size(); i++){
-				nn_arma(i) = nn[(*u - 1) * 20 + index[i]];
+				nn_arma(i) = nn[(*u - 1) * 15 + i];
 			}
 			
 			arma::mat LEM = {
 					 {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-					 {0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-					 {0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-					 {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-					 {0, 0, 0, 0, 1, 0, 0, 0, 2, 1, 0, 2, 2, 4, 6},
-					 {0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, 4, 2, 6},
-					 {0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1},
-					 {0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 2, 1, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 2, 6},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3},
-					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3},
+					 {0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+					 {0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+					 {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+					 {0, 0, 0, 0, 1, 0, 0, 0, 2, 2, 1, 0, 4, 2, 6}, 
+					 {0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1, 2, 2, 4, 6}, 
+					 {0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 2, 1, 3}, 
+					 {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 3}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 3}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 2, 6}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 3}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3}, 
+					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3}, 
 					 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
 					 
-			arma::vec ni_arma = solve(LEM, nn_arma);
-			arma::uvec index_for_orbits = {0,2,1,3,5,4,7,6,11,10,9,8,12,13,14};
-			//ni_arma = ni_arma.elem(index_for_orbits);
+			arma::vec ni_arma = solve(LEM,  nn_arma);
 			
 			for(int i=0; i < ni.ncol(); i++){
-				ni(*u - 1, i) = ni_arma[index_for_orbits[i]];
+				ni(*u - 1, i) = ni_arma[i];
 			}
 		}
    }
@@ -602,7 +593,7 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
    // ######
    
    // solve system of equations
-	std::vector<int> nn(n_nodes * 20);
+	std::vector<int> nn(n_nodes * 15);
 	IntegerMatrix ni (n_nodes, 15);
 	
 	non_induced_orbits_parallel non_induced_orbits_parallel(u_vec,
@@ -676,6 +667,7 @@ NumericMatrix GCM_wo(IntegerMatrix ni){
 
 // [[Rcpp::export]]
 NumericMatrix GCM_wo2(IntegerMatrix ni){
+	//ni ... Matrix of graphlet degree vectors
 	unsigned int n_orbits = ni.ncol();
 	
 	NumericMatrix GCM = NumericMatrix::diag(n_orbits, 1.0);
