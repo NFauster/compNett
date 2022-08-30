@@ -66,12 +66,22 @@ double spearman2(IntegerVector x, IntegerVector y){
 	return result[0];
 }
 
-double sd(NumericVector x){
+double sd(std::vector<double> x, int* nonZeroElements){
     
-    Function sd("sd"); 
-	NumericVector result = sd(x);
+    double x_px;    // holds sum(X*p(X))
+	double x2_px;   // holds sum(X^2*p(X))
+	*nonZeroElements = 0;
 	
-	return result[0];
+	for(int i = 0; i< x.size(); i++){
+		x_px += (i*x[i]);
+		x2_px += (pow(i,2)*x[i]);
+		
+		if(x[i] > 0){
+			(*nonZeroElements) ++;
+		}
+	}
+	
+	return sqrt(x2_px-x_px);
 }
 
 std::unordered_map<int, int> arrange_names(std::unordered_map<int, int>& M)
@@ -769,105 +779,178 @@ NumericMatrix CGDD(IntegerMatrix edge_list){
 }
 
 // [[Rcpp::export]]
-NumericMatrix CGDD_wo(IntegerMatrix ni){
-	NumericMatrix gdd = GDD_wo(ni);
+List CGDD_wo(IntegerMatrix ni){
+	//GDD
+	unsigned int n_orbits = ni.ncol();
+	unsigned int n_nodes = ni.nrow();
+	int k_max = max(ni);
 	
-	unsigned int n_orbits = gdd.ncol();
-	int ks = gdd.nrow();
-	
-	NumericMatrix cgdd_temp = gdd;
-	
-	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
-		for(unsigned int k = 1; k < ks; k++){
-			cgdd_temp(k, orbit) += cgdd_temp(k - 1, orbit);
-		}
-	}
-	
-	int sample_freq = floor(gdd.nrow()/4000) + 1;
-	int new_nrow = floor(gdd.nrow()/sample_freq) + 1;
-	
-	NumericMatrix CGDD(new_nrow , gdd.ncol());
+	//NumericMatrix GDD = NumericMatrix(k_max + 1, n_orbits);
+	std::vector<double> temp_gdd;
+	List CGDD(n_orbits);
+	int nonZeroElements;
 	
 	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
-		for(unsigned int k = 0; k < new_nrow - 1; k++){
-			CGDD(k, orbit) = cgdd_temp(sample_freq * k, orbit);
+		temp_gdd.clear();
+		temp_gdd.resize(max(ni(_, orbit)) + 1);
+		
+		for(unsigned int n = 0; n < n_nodes; n++){
+			temp_gdd[ni(n, orbit)] += 1.0/n_nodes;
 		}
-		CGDD(new_nrow - 1, orbit) = sample_freq;
+		
+		double gdd_sd = sd(temp_gdd, &nonZeroElements);
+		
+		
+		CGDD[orbit] = NumericMatrix(2,nonZeroElements);
+		int count_index = 0;
+		for(int i = 0; i < temp_gdd.size(); i++)
+		{
+			if(temp_gdd[i] > 0.0 & count_index == 0) {
+				as<NumericMatrix>(CGDD[orbit])(0,count_index) = i/gdd_sd;
+				as<NumericMatrix>(CGDD[orbit])(1,count_index) = temp_gdd[i];
+				count_index ++ ;
+			} else if(temp_gdd[i] > 0.0) {
+				as<NumericMatrix>(CGDD[orbit])(0,count_index) = i/gdd_sd;
+				as<NumericMatrix>(CGDD[orbit])(1,count_index) = temp_gdd[i] + as<NumericMatrix>(CGDD[orbit])(1,count_index-1);
+				count_index ++ ;
+			}
+		}
 	}
 	
 	return CGDD;
 }
+
 // [[Rcpp::export]]
-double emd_star(NumericVector X, NumericVector Y){
-	NumericVector* shorter;
-	NumericVector* longer;
+double EMD(NumericMatrix X, NumericMatrix Y, double c){
+	double emd = 0;
+	int index_x = 0;
+	int index_y = 0;
 	
-	int l_short = std::min(X.length(), Y.length()) - 1;
-	int l_long = std::max(X.length(), Y.length()) - 1;
+	// shift distribution
+	NumericMatrix X_shift = clone(X);
+	X_shift(0,_) = X(0,_) + c;
 	
-	//int sample_freq_X = X[X.length() - 1];
-	//int sample_freq_Y = Y[Y.length() - 1];
+	NumericMatrix* first_start;
+	NumericMatrix* later_start;
+	//int* index_first;
+	int* index_later;
 	
-	if(X.length() < Y.length()){
-		shorter = &X;
-		longer = &Y;
+	if(X_shift(0,0) < Y(0,0)){
+		first_start = &X_shift;
+		later_start = &Y;
+		
+		//index_first = &index_x;
+		index_later = &index_y;
 	} else{
-		shorter = &Y;
-		longer = &X;
+		first_start = &Y;
+		later_start = &X_shift;
+		
+		//index_first = &index_y;
+		index_later = &index_x;
 	}
 	
-	int sample_freq_shorter = (*shorter)[l_short];
-	int sample_freq_longer = (*longer)[l_long];
+	double prev_xCoord_later = 0.0;
+	double prev_value_later = 0.0;
 	
-	int sample_factor_shorter = lcm(sample_freq_shorter, sample_freq_longer)/sample_freq_shorter;
-	int sample_factor_longer = lcm(sample_freq_shorter, sample_freq_longer)/sample_freq_longer;
+	double x_upper;
+	double x_lower;
+	double y_diff;
 	
-	l_short = floor(l_short / sample_factor_shorter);
-	l_long = floor(l_long / sample_factor_longer);
+	/*printf("00 of other:%f\n", (*other)(0,0));
+	printf("00 of nextstep:%f\n", (*next_step)(0,(*index_next)+1));*/
 	
+	for(int index_first = 0; index_first < ((*first_start).ncol() - 1); index_first ++){
+		
+		if((*first_start)(0, index_first + 1) < (*later_start)(0, *index_later)){
+			x_upper = (*first_start)(0, index_first + 1);
+			x_lower = (*first_start)(0, index_first);
+			y_diff = (*first_start)(1, index_first);
+			
+			emd += (x_upper - x_lower) * y_diff;
+			
+			//printf("index_first %i, index_later:%i\n", index_first, *index_later);
+			//printf("x_u: %f, x_l: %f, y_di: %f, emd0: %f\n\n", x_upper, x_lower, y_diff, emd);
+		}else{
+		
+		while((*index_later) < (*later_start).ncol() & ((*later_start)(0, *index_later) <= (*first_start)(0, index_first + 1))){
+			if((*index_later) > 0){
+				prev_xCoord_later = (*later_start)(0, (*index_later) - 1);
+				prev_value_later = (*later_start)(1, (*index_later) - 1);
+			}
+			
+			x_upper = min(max((*later_start)(0, *index_later), (*first_start)(0, index_first)),
+						(*first_start)(0, index_first + 1));
+			
+			x_lower = max(prev_xCoord_later, (*first_start)(0, index_first));
+			
+			y_diff = abs((*first_start)(1, index_first) - prev_value_later);
+			
+			emd += (x_upper - x_lower) * y_diff;
+			//printf("index_first %i, index_later:%i\n", index_first, *index_later);
+			//printf("x_u: %f, x_l: %f, y_di: %f, emd1: %f\n\n", x_upper, x_lower, y_diff, emd);
+			
+			(*index_later) ++;
+		}
+		
+		x_upper = (*first_start)(0, index_first + 1);
+		x_lower = max((*later_start)(0, (*index_later - 1)), (*first_start)(0, index_first));	
+		y_diff = abs((*first_start)(1, index_first) - (*later_start)(1, (*index_later - 1)));
+		emd += (x_upper - x_lower) * y_diff;
+		//printf("index_first %i, index_later:%i\n", index_first, *index_later);
+		//printf("x_u: %f, x_l: %f, y_di: %f, emd1a: %f\n\n", x_upper, x_lower, y_diff, emd);
+		}
+	}
 	
-	double emd = l_long + l_short;
+	while((*index_later) < (*later_start).ncol()){		
+		x_upper = (*later_start)(0, *index_later);
+		x_lower = max((*first_start)(0, (*first_start).ncol() - 1),
+							(*later_start)(0, (*index_later) - 1));
+		
+		y_diff = 1 - (*later_start)(1, (*index_later) - 1);
+		
+		emd += (x_upper - x_lower) * y_diff;
+		
+		//printf("x_u: %f, x_l: %f, y_di: %f, emd2: %f\n\n", x_upper, x_lower, y_diff, emd);
+	
+		(*index_later) ++;
+	}
+	
+	//printf("emd3: %f\n", emd);
+	return emd;
+}
+
+
+// [[Rcpp::export]]
+double emd_star(NumericMatrix X, NumericMatrix Y){
+	double emd = X(0, X.ncol()-1) + Y(0, Y.ncol()-1);
 	double prop_emd = emd;
-	int c = - l_short + 1;
+	
+	int l_long = std::max(X(0, X.ncol()-1), Y(0, Y.ncol()-1));
+	int c = - l_long + 1;
+	int counter = 0;
 	
 	while(prop_emd <= emd){
 		emd = prop_emd;
-		prop_emd = 0;
-		// sum shorter vector standing out left
-		for(int i = 0; i < -c; i++){
-			prop_emd += (*shorter)[i * sample_factor_shorter];
-		}
-		// sum both vectors when overlapping
-		for(int i = std::max(0, -c); i < std::min(l_long-c, l_short); i++){
-			prop_emd += abs((*shorter)[i * sample_factor_shorter]-
-							(*longer)[i * sample_factor_longer+c]);
-		}
-		// sum longer vector not covered by shorter vector from left
-		for(int i = 0; i < c; i++){
-			prop_emd += (*longer)[i * sample_factor_longer];
-		}
-		// sum longer vector not covered by shorter vector from right
-		for(int i = l_long-1; i > l_short+c - 1; i--){
-			prop_emd += 1-(*longer)[i * sample_factor_longer];
-		}
+		prop_emd = EMD(X, Y, c);
 		
-		// sum shorter vector standing out right
-		for(int i = l_short-1; i > l_long-c - 1; i--){
-			prop_emd += 1-(*shorter)[i * sample_factor_shorter];
+		c += 1;
+		counter++;
+		if(counter == 20) {
+			printf("did not converge");
+			break;
 		}
-		
-		c ++;
 	}
+	
 	return emd;
 }
 
 // [[Rcpp::export]]
-double NetEmd(NumericMatrix X, NumericMatrix Y){
-	unsigned int n_orbits = X.ncol();
+double NetEmd(List X, List Y){
+	unsigned int n_orbits = X.length();
 	double netemd = 0;
 	
 	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
-		netemd =+ emd_star(X(_, orbit), Y(_, orbit));
+		netemd =+ emd_star(X[orbit], Y[orbit]);
 	}
 	
 	return netemd/n_orbits;
