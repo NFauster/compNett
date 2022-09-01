@@ -256,7 +256,8 @@ list_neighbourhood <- function(edge_list, directed = FALSE){
 
 # Other utilities ----
 spearman <- function(x, y){
-  temp <- cor.test(x, y)
+  temp <- cor.test(x, y,
+                   method = "spearman")
   
   return(as.numeric(temp$estimate))
 }
