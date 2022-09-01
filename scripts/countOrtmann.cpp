@@ -78,14 +78,7 @@ IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, u
 	
 	nn[15] = sum(as<IntegerVector>(k3[crt_N - 1])) - sum(k3_edge[crt_node - 1]);
 	
-	nn[16] = -chooseC(deg[crt_node - 1], 2);
-	for(unsigned int i = 0; i < crt_N.length(); i++){
-		IntegerVector v_N = neighbourhood[crt_N[i] - 1][0];
-		for(unsigned int j = i+1; j < crt_N.length(); j++){
-			IntegerVector w_N = neighbourhood[crt_N[j] - 1][0];
-			nn[16] += intersect(v_N, w_N).length();
-		}
-	}
+	nn[16] = c4[crt_node - 1];
 	
 	nn[17] = -k3[crt_node - 1];
 	for(unsigned int i = 0; i < completing_triangle[crt_node - 1].size(); i += 2){
@@ -332,7 +325,7 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 	IntegerMatrix all_non_induced_counts (n_nodes, 20);
 	IntegerMatrix all_induced_counts (n_nodes, 15);
 	
-	for(unsigned int t = 1; t <= n_nodes; t++){
+	/*for(unsigned int t = 1; t <= n_nodes; t++){
 		all_non_induced_counts(t-1, _) = non_induced_orbits(t, n_nodes, n_edges, 
 							  neighbourhood, deg,
 							  k3, c4, k4, k3_edge, completing_triangle);
@@ -345,7 +338,7 @@ IntegerMatrix countOrtmann(IntegerMatrix edge_list){
 															   "o12", "o13", "o14");
 															   
 	clock.tock("total_count");
-	clock.stop("profiling_countOrtmann");
+	clock.stop("profiling_countOrtmann");*/
 
 	return all_induced_counts;
 }
