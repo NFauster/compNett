@@ -617,10 +617,10 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	parallelFor(0, u_vec.length(), non_induced_orbits_parallel);
 	clock.tock("compute_nn");
 	
-	for(int i = 0; i <100; i++){
+	/*for(int i = 0; i <100; i++){
 		Rprintf("%i\n", nn[i]);
 		if(i%5 == 4) Rprintf("\n");
-	}
+	}*/
 	
 	clock.tick("compute_ni");
 	compute_induced_orbits_parallel compute_induced_orbits_parallel(nn,ni, u_vec);
@@ -783,9 +783,7 @@ List CGDD_wo(IntegerMatrix ni){
 	//GDD
 	unsigned int n_orbits = ni.ncol();
 	unsigned int n_nodes = ni.nrow();
-	int k_max = max(ni);
 	
-	//NumericMatrix GDD = NumericMatrix(k_max + 1, n_orbits);
 	std::vector<double> temp_gdd;
 	List CGDD(n_orbits);
 	int nonZeroElements;
@@ -799,6 +797,7 @@ List CGDD_wo(IntegerMatrix ni){
 		}
 		
 		double gdd_sd = sd(temp_gdd, &nonZeroElements);
+		if(gdd_sd == 0) gdd_sd = 1.0;
 		
 		
 		CGDD[orbit] = NumericMatrix(2,nonZeroElements);
@@ -832,20 +831,19 @@ double EMD(NumericMatrix X, NumericMatrix Y, double c){
 	
 	NumericMatrix* first_start;
 	NumericMatrix* later_start;
-	//int* index_first;
+	
 	int* index_later;
 	
+	// determine which distribution has the first step
 	if(X_shift(0,0) < Y(0,0)){
 		first_start = &X_shift;
 		later_start = &Y;
 		
-		//index_first = &index_x;
 		index_later = &index_y;
 	} else{
 		first_start = &Y;
 		later_start = &X_shift;
 		
-		//index_first = &index_y;
 		index_later = &index_x;
 	}
 	
@@ -856,66 +854,82 @@ double EMD(NumericMatrix X, NumericMatrix Y, double c){
 	double x_lower;
 	double y_diff;
 	
-	/*printf("00 of other:%f\n", (*other)(0,0));
-	printf("00 of nextstep:%f\n", (*next_step)(0,(*index_next)+1));*/
-	
-	for(int index_first = 0; index_first < ((*first_start).ncol() - 1); index_first ++){
+	for(int index_first = 0; index_first < ((*first_start).ncol() - 1); 
+				index_first ++){
 		
-		if((*first_start)(0, index_first + 1) < (*later_start)(0, *index_later)){
+		if((*first_start)(0, index_first + 1) < (*later_start)(0, 0)){
+			// integrate the earlier starting distribution before the later one
+			// starts
+			
 			x_upper = (*first_start)(0, index_first + 1);
 			x_lower = (*first_start)(0, index_first);
 			y_diff = (*first_start)(1, index_first);
 			
 			emd += (x_upper - x_lower) * y_diff;
 			
-			//printf("index_first %i, index_later:%i\n", index_first, *index_later);
-			//printf("x_u: %f, x_l: %f, y_di: %f, emd0: %f\n\n", x_upper, x_lower, y_diff, emd);
-		}else{
-		
-		while((*index_later) < (*later_start).ncol() & ((*later_start)(0, *index_later) <= (*first_start)(0, index_first + 1))){
-			if((*index_later) > 0){
-				prev_xCoord_later = (*later_start)(0, (*index_later) - 1);
-				prev_value_later = (*later_start)(1, (*index_later) - 1);
-			}
+		} else if(((*first_start)(0, index_first) >= 
+					(*later_start)(0, (*later_start).ncol() - 1))){
+			// integrate the difference of the distributions after the 
+			// later starting distributions stops
 			
-			x_upper = min(max((*later_start)(0, *index_later), (*first_start)(0, index_first)),
-						(*first_start)(0, index_first + 1));
-			
-			x_lower = max(prev_xCoord_later, (*first_start)(0, index_first));
-			
-			y_diff = abs((*first_start)(1, index_first) - prev_value_later);
+			x_upper = (*first_start)(0, index_first + 1);
+			x_lower = (*first_start)(0, index_first);
+			y_diff = 1 - (*first_start)(1, index_first);
 			
 			emd += (x_upper - x_lower) * y_diff;
-			//printf("index_first %i, index_later:%i\n", index_first, *index_later);
-			//printf("x_u: %f, x_l: %f, y_di: %f, emd1: %f\n\n", x_upper, x_lower, y_diff, emd);
+		} else {
+			// integrate the difference of the distributions in the 
+			// overlapping section
 			
-			(*index_later) ++;
-		}
+			while((*index_later) < (*later_start).ncol() & 
+					((*later_start)(0, *index_later) <= 
+					(*first_start)(0, index_first + 1))){
+				if((*index_later) > 0){
+					prev_xCoord_later = (*later_start)(0, (*index_later) - 1);
+					prev_value_later = (*later_start)(1, (*index_later) - 1);
+				}
+			
+				x_upper = min(max((*later_start)(0, *index_later), 
+								(*first_start)(0, index_first)),
+							(*first_start)(0, index_first + 1));
+			
+				x_lower = max(prev_xCoord_later, (*first_start)(0, index_first));
+			
+				y_diff = abs((*first_start)(1, index_first) - prev_value_later);
+			
+				emd += (x_upper - x_lower) * y_diff;
+			
+				(*index_later) ++;
+			}
 		
-		x_upper = (*first_start)(0, index_first + 1);
-		x_lower = max((*later_start)(0, (*index_later - 1)), (*first_start)(0, index_first));	
-		y_diff = abs((*first_start)(1, index_first) - (*later_start)(1, (*index_later - 1)));
-		emd += (x_upper - x_lower) * y_diff;
-		//printf("index_first %i, index_later:%i\n", index_first, *index_later);
-		//printf("x_u: %f, x_l: %f, y_di: %f, emd1a: %f\n\n", x_upper, x_lower, y_diff, emd);
+		
+			x_upper = (*first_start)(0, index_first + 1);
+			x_lower = max((*later_start)(0, (*index_later - 1)), 
+						(*first_start)(0, index_first));	
+			y_diff = abs((*first_start)(1, index_first) - 
+							(*later_start)(1, (*index_later - 1)));
+			emd += (x_upper - x_lower) * y_diff;
 		}
 	}
 	
-	while((*index_later) < (*later_start).ncol()){		
+	// integrate the difference of the distributions after the 
+	// earlier starting distributions stops
+	while((*index_later) < (*later_start).ncol()){
+		if((*index_later) > 0){
+			prev_xCoord_later = (*later_start)(0, (*index_later) - 1);
+			prev_value_later = (*later_start)(1, (*index_later) - 1);
+		}
 		x_upper = (*later_start)(0, *index_later);
 		x_lower = max((*first_start)(0, (*first_start).ncol() - 1),
-							(*later_start)(0, (*index_later) - 1));
+							prev_xCoord_later);
 		
-		y_diff = 1 - (*later_start)(1, (*index_later) - 1);
+		y_diff = 1 - prev_value_later;
 		
 		emd += (x_upper - x_lower) * y_diff;
-		
-		//printf("x_u: %f, x_l: %f, y_di: %f, emd2: %f\n\n", x_upper, x_lower, y_diff, emd);
 	
 		(*index_later) ++;
 	}
-	
-	//printf("emd3: %f\n", emd);
+
 	return emd;
 }
 
@@ -926,18 +940,23 @@ double emd_star(NumericMatrix X, NumericMatrix Y){
 	double prop_emd = emd;
 	
 	int l_long = std::max(X(0, X.ncol()-1), Y(0, Y.ncol()-1));
-	int c = - l_long + 1;
+	double c = - l_long + 1;
 	int counter = 0;
+	bool check_run = true;
 	
-	while(prop_emd <= emd){
-		emd = prop_emd;
+	while(check_run){
 		prop_emd = EMD(X, Y, c);
+		c += .5;
 		
-		c += 1;
-		counter++;
-		if(counter == 20) {
-			printf("did not converge");
-			break;
+		if(prop_emd <= emd){
+			emd = prop_emd;
+			counter = 0;
+			check_run = true;
+		} else if (counter <= 200){
+			counter ++;
+			check_run = true;
+		} else {
+			check_run = false;
 		}
 	}
 	
@@ -950,7 +969,7 @@ double NetEmd(List X, List Y){
 	double netemd = 0;
 	
 	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
-		netemd =+ emd_star(X[orbit], Y[orbit]);
+		netemd += emd_star(X[orbit], Y[orbit]);
 	}
 	
 	return netemd/n_orbits;
