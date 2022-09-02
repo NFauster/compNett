@@ -29,6 +29,99 @@ double spearman(IntegerVector x, IntegerVector y){
 	return result[0];
 }
 
+std::unordered_map<int, int> arrange_names(std::unordered_map<int, int>& M)
+{
+  
+    // Declare a multimap
+    std::multimap<int, int> MM;
+  
+    // Insert every (key-value) pairs from
+    // map M to multimap MM as (value-key)
+    // pairs
+    for (auto& it : M) {
+        MM.insert({ it.second, it.first });
+    }
+	int i = 1;
+	for(auto& it : MM){
+		M[it.second] = i;
+		i++;
+	}
+  
+    return M;
+}
+
+std::unordered_map<int, int> degree_rcpp(IntegerMatrix edge_list){
+	//IntegerMatrix edge_list_orig = edge_list;
+	//std::sort(edge_list.begin(), edge_list.end());
+	
+	/*int n_unique = std::distance(edge_list.begin(), 
+					  std::unique(edge_list.begin(), edge_list.end()));*/
+					  
+	std::unordered_map<int, int> count;
+	int n_edges = edge_list.nrow();
+	
+	for(int i = 0; i < n_edges; i++){
+		if(*(edge_list.begin() + i) != *(edge_list.begin() + n_edges + i)){
+			count[*(edge_list.begin() + i)] ++;
+			count[*(edge_list.begin() + n_edges + i)] ++;
+		}
+		
+	}
+	
+	return count;
+}
+
+
+
+void edge_list_rename_rcpp(IntegerMatrix edge_list, int& n_edges,
+							std::vector<int> (*neighbourhood)[3],
+							std::vector<int>& deg,
+							std::vector<int>& os){
+	n_edges = edge_list.nrow();
+	
+	// rename and redirect
+	std::unordered_map<int, int> name_correspondance = degree_rcpp(edge_list);
+	arrange_names(name_correspondance);
+	
+	int n_nodes = name_correspondance.size();
+	
+	deg.resize(n_nodes);
+	os.resize(n_nodes);
+	
+	int temp_from;
+	int temp_to;
+	
+	for(int i = 0; i < n_edges; i++){
+		// change the original node names
+		temp_from = min(name_correspondance[edge_list(i,0)], name_correspondance[edge_list(i,1)]);
+		temp_to = max(name_correspondance[edge_list(i,0)], name_correspondance[edge_list(i,1)]);
+		
+		if(temp_from != temp_to){
+			neighbourhood[temp_from - 1][0].push_back(temp_to);
+			neighbourhood[temp_from - 1][2].push_back(temp_to);
+				
+			neighbourhood[temp_to - 1][0].push_back(temp_from);
+			neighbourhood[temp_to - 1][1].push_back(temp_from);
+			
+			// the degree are not as defined but count without self-loops
+			// (makes computation easier)
+			deg[temp_from - 1] ++;
+			deg[temp_to - 1] ++;
+		} else{
+			os[temp_from - 1] ++;
+		}
+		
+	}
+
+	
+	// sort neighbourhood
+	for(int i = 0; i < n_nodes; i++){
+		for(int j = 0; j < 3; j++){
+			sort(neighbourhood[i][j].begin(), neighbourhood[i][j].end());
+		}
+	}
+}
+
 IntegerVector non_induced_orbits (unsigned int crt_node, unsigned int n_nodes, unsigned int n_edges, 
 							  IntegerVector neighbourhood[][3], IntegerVector deg,
 							  IntegerVector k3, IntegerVector c4, IntegerVector k4,
@@ -131,33 +224,32 @@ IntegerVector compute_induced_orbits(IntegerVector nn){
 
 // [[Rcpp::export]]
 IntegerMatrix countOrtmann(IntegerMatrix edge_list){
+	int n_nodes = max(edge_list);
+	
+	int n_edges;
+	std::vector<int> temp_neighbourhood[n_nodes][3];
+	std::vector<int> temp_deg(n_nodes, 0);
+	std::vector<int> os(n_nodes, 0);
+	
+	edge_list_rename_rcpp(edge_list, n_edges, temp_neighbourhood, temp_deg, os);
+	n_nodes = temp_deg.size();
+	
 	Rcpp::Clock clock;
 	
 	clock.tick("total_count");
 	
-	unsigned int n_nodes = max(edge_list);
-	unsigned int n_edges = edge_list.nrow();	
 	
-	//call R function
-	Function list_neighbourhood("list_neighbourhood");
-	Function degree("degree");
-	
-	// Compute neighbourhoods
-	clock.tick("neighbour");
-	List neighbourhood_list = list_neighbourhood(edge_list, Named("directed") = true); //TODO in Rcpp
 	IntegerVector neighbourhood[n_nodes][3];
 	
 	for(unsigned int i = 0; i < n_nodes; i++){
-		neighbourhood[i][0] = as<List>(neighbourhood_list["total_neighbourhood"])[i];
-		neighbourhood[i][1] = as<List>(neighbourhood_list["in_neighbourhood"])[i];
-		neighbourhood[i][2] = as<List>(neighbourhood_list["out_neighbourhood"])[i];
+		for(unsigned int j = 0; j < 3; j++){
+			neighbourhood[i][j] = wrap(temp_neighbourhood[i][j]);
+		}
 	}
-	clock.tock("neighbour");
-									
-	// Compute degree vector
-	clock.tick("degree");
-	IntegerVector deg = degree(edge_list, Named("directed") = false);
-	clock.tock("degree");
+	
+	IntegerVector deg = wrap(temp_deg);
+	
+	
 	
 	
 	// Initialise variables
