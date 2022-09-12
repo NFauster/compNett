@@ -11,25 +11,6 @@ using namespace arma;
 using namespace RcppParallel;
 using namespace std;
 
-// Recursive function to return
-// gcd of a and b
-// as proposed by https://www.geeksforgeeks.org/cpp-program-for-program-to-find-lcm-of-two-numbers/
-long long gcd(long long int a,
-              long long int b)
-{
-  if (b == 0)
-    return a;
-  return gcd(b, a % b);
-}
- 
-// Function to return LCM of
-// two numbers
-// as proposed by https://www.geeksforgeeks.org/cpp-program-for-program-to-find-lcm-of-two-numbers/
-long long lcm(int a, int b)
-{
-    return (a / gcd(a, b)) * b;
-}
-
 double chooseC(double n, double k) {
 	// as proposed by Dirk Eddelbuettel 
 	// https://stackoverflow.com/questions/25005216/n-choose-k-function-crashes-rcpp
@@ -66,17 +47,17 @@ double spearman2(IntegerVector x, IntegerVector y){
 	return result[0];
 }
 
-double sd(std::vector<double> x, int* nonZeroElements){
+double sd(std::map<long, double> x, int* nonZeroElements){
     
-    double x_px;    // holds sum(X*p(X))
-	double x2_px;   // holds sum(X^2*p(X))
+    double x_px = 0;    // holds sum(X*p(X))
+	double x2_px = 0;   // holds sum(X^2*p(X))
 	*nonZeroElements = 0;
 	
-	for(int i = 0; i< x.size(); i++){
-		x_px += (i*x[i]);
-		x2_px += (pow(i,2)*x[i]);
+	for(const auto& [i, value]: x){
+		x_px += (i*value);
+		x2_px += (pow(i,2)*value);
 		
-		if(x[i] > 0){
+		if(value > 0){
 			(*nonZeroElements) ++;
 		}
 	}
@@ -105,14 +86,7 @@ std::unordered_map<int, int> arrange_names(std::unordered_map<int, int>& M)
     return M;
 }
 
-// [[Rcpp::export]]
-std::unordered_map<int, int> degree_rcpp(IntegerMatrix edge_list){
-	//IntegerMatrix edge_list_orig = edge_list;
-	//std::sort(edge_list.begin(), edge_list.end());
-	
-	/*int n_unique = std::distance(edge_list.begin(), 
-					  std::unique(edge_list.begin(), edge_list.end()));*/
-					  
+std::unordered_map<int, int> degree_rcpp(IntegerMatrix edge_list){					  
 	std::unordered_map<int, int> count;
 	int n_edges = edge_list.nrow();
 	
@@ -561,10 +535,12 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	
 	clock.tick("total_time");
 	clock.tick("pre_proc");
+	// first estimate of the network order
 	int n_nodes = max(edge_list);
 	
 	int n_edges;
 	std::vector<int> neighbourhood[n_nodes][3];
+			//in-, out- and total neighbourhood
 	std::vector<int> deg(n_nodes, 0);
 	std::vector<int> os(n_nodes, 0);
 	
@@ -577,17 +553,17 @@ IntegerMatrix parallelCountOrtmann(IntegerMatrix edge_list) {
 	
 	clock.tick("total_count");
    
-   CountOrtmann countOrtmann(n_nodes, u_vec, neighbourhood);
+	CountOrtmann countOrtmann(n_nodes, u_vec, neighbourhood);
 
-   // call paralleReduce to start the work
-   parallelReduce(1, u_vec.length(), countOrtmann);
+	// call paralleReduce to start the work
+	parallelReduce(1, u_vec.length(), countOrtmann);
    
-   clock.tock("counting_graphlet");
+	clock.tock("counting_graphlet");
    
    
-   clock.tick("compute_nn");
+	clock.tick("compute_nn");
    
-   // solve system of equations
+	// solve system of equations
 	std::vector<int> nn(n_nodes * 16);
 	IntegerMatrix ni (n_nodes, 16);
 	
@@ -762,38 +738,37 @@ NumericMatrix CGDD(IntegerMatrix edge_list){
 }
 
 // [[Rcpp::export]]
-List CGDD_wo(IntegerMatrix ni){
+List CGDD_wo(NumericMatrix ni){
 	//GDD
 	unsigned int n_orbits = ni.ncol();
 	unsigned int n_nodes = ni.nrow();
 	
-	std::vector<double> temp_gdd;
+	std::map<long, double> temp_gdd;
 	List CGDD(n_orbits);
 	int nonZeroElements;
 	
 	for(unsigned int orbit = 0; orbit < n_orbits; orbit++){
 		temp_gdd.clear();
-		temp_gdd.resize(max(ni(_, orbit)) + 1);
 		
 		for(unsigned int n = 0; n < n_nodes; n++){
 			temp_gdd[ni(n, orbit)] += 1.0/n_nodes;
 		}
 		
-		double gdd_sd = sd(temp_gdd, &nonZeroElements);
+		double gdd_sd = sd2(temp_gdd, &nonZeroElements);
 		if(gdd_sd == 0) gdd_sd = 1.0;
 		
 		
 		CGDD[orbit] = NumericMatrix(2,nonZeroElements);
 		int count_index = 0;
-		for(int i = 0; i < temp_gdd.size(); i++)
+		for(const auto& [x, value]: temp_gdd)
 		{
-			if(temp_gdd[i] > 0.0 & count_index == 0) {
-				as<NumericMatrix>(CGDD[orbit])(0,count_index) = i/gdd_sd;
-				as<NumericMatrix>(CGDD[orbit])(1,count_index) = temp_gdd[i];
+			if(value > 0.0 & count_index == 0) {
+				as<NumericMatrix>(CGDD[orbit])(0,count_index) = x/gdd_sd;
+				as<NumericMatrix>(CGDD[orbit])(1,count_index) = value;
 				count_index ++ ;
-			} else if(temp_gdd[i] > 0.0) {
-				as<NumericMatrix>(CGDD[orbit])(0,count_index) = i/gdd_sd;
-				as<NumericMatrix>(CGDD[orbit])(1,count_index) = temp_gdd[i] + as<NumericMatrix>(CGDD[orbit])(1,count_index-1);
+			} else if(value > 0.0) {
+				as<NumericMatrix>(CGDD[orbit])(0,count_index) = x/gdd_sd;
+				as<NumericMatrix>(CGDD[orbit])(1,count_index) = value + as<NumericMatrix>(CGDD[orbit])(1,count_index-1);
 				count_index ++ ;
 			}
 		}
