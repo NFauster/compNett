@@ -42,3 +42,6 @@ vignettes/*.pdf
 # rendered files
 *.pdf
 *.html
+
+# network data
+data/

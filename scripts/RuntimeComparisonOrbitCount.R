@@ -14,7 +14,7 @@ sourceCpp(here::here("scripts/countOrtmann_modSpeed.cpp"))
 
 # R vs Rcpp vs RcppParallel ----
 
-n_nodes <- seq(1e2, 4e2, 1e2)
+n_nodes <- seq(1e2, 3.1e3, 1e2)
 densities <- c(.0005, .001, .005, .01, .05, .1)
 
 
@@ -42,13 +42,13 @@ for(nodes in n_nodes){
 }
 
 save(benchmark_R, file = here::here(paste0("data/benchmark_R-ER_",
-                                         n,
+                                         nodes,
                                          ".RData")))
 
 benchmark_R %>%
   mutate(time = time /1e9,
          density = sapply(density, FUN = function(x) {
-           paste("d =", format(x, scientific = FALSE))
+           paste("D =", format(x, scientific = FALSE))
          }) ) %>%
   
   ggplot(aes(x = n_nodes,
@@ -56,7 +56,8 @@ benchmark_R %>%
              colour = expr)) + 
   geom_point() + 
   
-  scale_color_discrete(name = "Implementation") + 
+  scale_color_discrete(name = "Implementation",
+                       type = sjPlot::sjplot_pal(pal = "metro")) + 
   
   labs(x = "Number of nodes",
        y = "Execution time in s") + 
@@ -98,13 +99,13 @@ for(nodes in n_nodes){
 }
 
 save(benchmark, file = here::here(paste0("data/benchmark-ER_",
-                                         "5000-02",
+                                         nodes,
                                          ".RData")))
 
-benchmark_R %>%
+benchmark %>%
   mutate(time = time /1e9,
          density = sapply(density, FUN = function(x) {
-           paste("d =", format(x, scientific = FALSE))
+           paste("D =", format(x, scientific = FALSE))
          }) ) %>%
   
   ggplot(aes(x = n_nodes,
@@ -112,7 +113,8 @@ benchmark_R %>%
              colour = expr)) + 
   geom_point() + 
   
-  scale_color_discrete(name = "Algorithm") + 
+  scale_color_discrete(name = "Algorithm",
+                       type = sjPlot::sjplot_pal(pal = "metro")) +
   
   labs(x = "Number of nodes",
        y = "Execution time in s") + 
@@ -122,6 +124,98 @@ benchmark_R %>%
   
   sjPlot::theme_sjplot2() + 
   theme(legend.position = "bottom")
+
+
+## Large networks ====
+benchmark_large <- data.frame("n_nodes" = numeric(),
+                              "density" = numeric(),
+                              "expr" = character(),
+                              "time" = numeric())
+
+####
+load(here::here("data/edgeList_ER-1e+05-5e-04_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1e5,
+                                  density = 5e-4))
+
+save(benchmark_large, file = here::here("data/benchmark-ER_large.RData"))
+
+
+####
+load(here::here("data/edgeList_ER-1e+05-0.001_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1e5,
+                                  density = .001))
+
+save(benchmark_large, file = here::here("data/benchmark-ER_large.RData"))
+
+
+####
+load(here::here("data/edgeList_ER-1e+05-0.005_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1e5,
+                                  density = .005))
+
+save(benchmark_large, file = here::here("data/benchmark-ER_large.RData"))
+
+
+####
+####
+load(here::here("data/edgeList_ER-150000-5e-04_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1.5e5,
+                                  density = 5e-4))
+print("done")
+save(benchmark_large, file = here::here("data/benchmark-ER_large2.RData"))
+
+
+####
+load(here::here("data/edgeList_ER-150000-0.001_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1.5e5,
+                                  density = .001))
+
+save(benchmark_large, file = here::here("data/benchmark-ER_large2.RData"))
+
+
+####
+load(here::here("data/edgeList_ER-150000-0.005_1.RData"))
+
+benchmark_large <- rbind(benchmark_large,
+                         microbenchmark("Orca" = count4(matrix(as.integer(edge_list),ncol=2,byrow=F)),
+                                        "Ortmann" = parallelCountOrtmann(edge_list),
+                                        times = 5) %>%
+                           as.data.frame() %>%
+                           mutate(n_nodes = 1.5e5,
+                                  density = .005))
+
+save(benchmark_large, file = here::here("data/benchmark-ER_large3.RData"))
+
 
 
 

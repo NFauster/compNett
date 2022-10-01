@@ -38,7 +38,7 @@ generate_cycle_graph <- function(n_node){
 
 
 # Parameters ----
-number_nodes <- 1e3
+number_nodes <- 1e2
 nodes_init_graph <- 2      ## Size of initial (seed) graph
 init_graph <- matrix(c(1,2,2,3,3,4,4,1,1,3), ncol = 2, byrow = T)     ## Or specify inital graph (edge list)
 # init_graph <- NULL
